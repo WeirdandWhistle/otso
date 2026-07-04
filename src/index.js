@@ -15,14 +15,17 @@ export default {
 		const pathname = new URL(request.url).pathname;
 
 		const redirect_uri = "http://localhost:8787/callback";
+		console.log("not real: ", await env.OAUTH_STATE.get("1234!"));
 
-		if(pathname == "/"){
+		if(pathname == "/oauth/github"){
 			const forward_url = new URL("https://github.com/login/oauth/authorize");
 			const query = new URLSearchParams();
 			const response_type = "code"; query.set("response_type", response_type);
-			const client_id = env.CLIENT_ID; query.set("client_id", client_id);
+			const client_id = env.GITUHB_CLIENT_ID; query.set("client_id", client_id);
 			query.set("redirect_uri", redirect_uri);
 			const state = generateRandomString(32); query.set("state", state );
+			await env.OAUTH_STATE.put(state, "1", {expirationTtl: 60});
+
 			forward_url.search = query.toString();
 			return new Response("",{
 				status: 302,
@@ -36,13 +39,16 @@ export default {
 			const code = query.get("code");
 			const state = query.get("state");
 			const grant_type = "authorization_code";
+
+			if(!await env.OAUTH_STATE.get(state))
+				return new Response("Invalid State", {status: 400});
 			
 			const body = new URLSearchParams();
 			body.set("grant_type", grant_type);
 			body.set("code", code);
 			body.set("redirect_uri", redirect_uri);
-			body.set("client_id", env.CLIENT_ID);
-			body.set("client_secret", env.CLIENT_SECRET);
+			body.set("client_id", env.GITHUB_CLIENT_ID);
+			body.set("client_secret", env.GITHUB_CLIENT_SECRET);
 
 			const res = await fetch(githubTokenEndpoint, {
 				method: 'POST',
@@ -74,8 +80,17 @@ export default {
 					return new Response("Could not detect a usable format for token exchange");
 			}
 
-			// console.log("tokens",tokens);
-			console.log("email",await listGithubUserEmails(tokens.access_token));
+			const emailArray = await listGithubUserEmails(tokens.access_token);
+			let primaryEmail;
+			for(const { primary, email } of emailArray){
+				if(primary){
+					primaryEmail = email;
+					break;
+				}
+			}
+
+			console.log("primary email", primaryEmail);
+			console.log("username",await getGithubUsername(tokens.access_token));
 
 			return new Response(JSON.stringify(tokens),{
 				headers:{
@@ -106,6 +121,21 @@ async function listGithubUserEmails(access_token){
 	}
 
 	return await res.json();
+}
+
+async function getGithubUsername(access_token){
+	const res = await fetch("https://api.github.com/user",{
+		headers: {
+			"Authorization" : `Bearer ${access_token}`,
+			"User-Agent" : userAgent
+		}
+	});
+
+	if(!res.ok)
+		throw new Error(`Github /user API failed with code ${res.status}. Text:`, await res.text());
+	const json = await res.json();
+	console.log(json);
+	return json.login;
 }
 
 const generateRandomString = (length) => {
