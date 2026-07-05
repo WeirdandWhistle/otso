@@ -8,8 +8,9 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-const userAgent = "Otso-app";
+const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.whynotjava.net)";
 // OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
+import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -153,7 +154,7 @@ export default {
 				console.log("twitch info",providerInfo);
 			}
 
-			return new Response(JSON.stringify(tokens),{
+			return new Response(JSON.stringify(providerInfo),{
 				headers:{
 					'Content-Type' : 'application/json'
 				}
@@ -169,124 +170,12 @@ export default {
 	}		
 };
 
-async function getGithubUserEmail(access_token){
-	const res = await fetch("https://api.github.com/user/emails", {
-		headers: {
-			'Authorization' : `Bearer ${access_token}`,
-			'User-Agent' : userAgent
-		}
-	});
-
-	if(!res.ok){
-		throw new Error("Github API failed while trying to fetch Email. Text: " + await res.text());
-	}
-
-	const emailArray = await res.json();
-	for(const { primary, email } of emailArray){
-		if(primary){
-			return email;
-		}
-	}
-}
-
-async function getGithubUser(access_token){
-	const res = await fetch("https://api.github.com/user",{
-		headers: {
-			"Authorization" : `Bearer ${access_token}`,
-			"User-Agent" : userAgent
-		}
-	});
-
-	if(!res.ok)
-		throw new Error(`Github /user API failed with code ${res.status}. Text:`, await res.text());
-	const json = await res.json();
-	// console.log("github /user",json);
-	return {
-		username: json.login,
-		id: json.id
-	};
-}
-
-async function getGoogleUser(access_token){
-	const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-		headers: {
-			'Authorization' : `Bearer ${access_token}`,
-			'User-Agent' : userAgent
-		}
-	});
-
-	if(!res.ok){
-		throw new Error("Google API failed while trying to fetch Email. Text: " + await res.text());
-	}
-	const json = await res.json(); 
-	console.log("google user info", json);
-	return {
-		username: json.name,
-		email: json.email,
-		id: json.sub
-	};
-}
-
-async function getSlackUser(tokens) {
-	const slackInfo = await fetch(`https://slack.com/api/users.info?user=${tokens.authed_user.id}`, {
-		headers: {
-			'Authorization' : `Bearer ${tokens.access_token}`
-		}
-	});
-	if(!slackInfo.ok)
-		throw new Error(`Slack API failed with status ${slackInfo.status}. Text: `+await slackInfo.text());
-	const slackJson = await slackInfo.json();
-	
-	return {
-		username: slackJson.user.name,
-		id: slackJson.user.id,
-		email: slackJson.user.profile.email,
-	};
-}
-
-async function getDiscordUser(access_token) {
-	// console.log("logged in via discord tokens",tokens);
-	const discordInfo = await fetch("https://discord.com/api/v10/users/@me",{
-		headers:{
-			"Authorization":`Bearer ${access_token}`
-		}
-	});
-	if(!discordInfo.ok)
-		throw new Error(`Discord API failed with status code ${discordInfo.status}. Text: `+await discordInfo.text());
-	const json = await discordInfo.json()
-	// console.log("discord info", json);
-	return {
-		username: json.username,
-		id: json.id,
-		email: json.email,
-	};
-}
-async function getTwitchUser(access_token, client_id) {
-	const twitchInfo = await fetch(`https://api.twitch.tv/helix/users`,{
-		headers:{
-			"Authorization":`Bearer ${access_token}`,
-			"User-Agent": userAgent,
-			"Client-Id": client_id
-		}
-	});
-	if(!twitchInfo.ok)
-		throw new Error(`Twitch API failed with status code ${twitchInfo.status}. Text: `+await twitchInfo.text());
-	let json = await twitchInfo.json();
-	console.log("twitch info", json);
-	json = json.data[0];
-	return {
-		username: json.login,
-		id: json.id,
-		email: json.email,
-	};
-}
-
 
 
 const generateRandomString = (length) => {
   let result = '';
   const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.';
   const charactersLength = characters.length;
   for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
