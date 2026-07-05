@@ -9,6 +9,7 @@
  */
 
 const userAgent = "Otso-app";
+// OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
 
 export default {
 	async fetch(request, env, ctx) {
@@ -39,11 +40,16 @@ export default {
 				client_id = env.SLACK_CLIENT_ID;
 				query.set("scope", "users:read");
 				provider = "slack";
-			}else if(pathname.endsWith("discord")){
+			} else if(pathname.endsWith("discord")){
 				forward_url = new URL("https://discord.com/oauth2/authorize");
 				client_id = env.DISCORD_CLIENT_ID;
 				query.set("scope", "identify email");
 				provider = "discord";
+			} else if(pathname.endsWith("twitch")){
+				forward_url = new URL("https://id.twitch.tv/oauth2/authorize");
+				client_id = env.TWITCH_CLIENT_ID;
+				query.set("scope", "user:read:email");
+				provider = "twitch";
 			} else {
 				throw new Error("That OAuth 2.0 provider is currently not supported");
 			}
@@ -63,6 +69,7 @@ export default {
 			const googleTokenEndpoint = "https://oauth2.googleapis.com/token";
 			const slackTokenEndpoint = "https://slack.com/api/oauth.v2.access";
 			const discordTokenEndpoint = "https://discord.com/api/oauth2/token";
+			const twitchTokenEndpoint = "https://id.twitch.tv/oauth2/token";
 			const query = new URL(request.url).searchParams;
 			const code = query.get("code");
 			const state = query.get("state");
@@ -96,6 +103,10 @@ export default {
 				body.set("client_id", env.DISCORD_CLIENT_ID);
 				body.set("client_secret", env.DISCORD_CLIENT_SECRET);
 				endpoint = discordTokenEndpoint;
+			} else if(KVstate.auth == "twitch"){
+				body.set("client_id", env.TWITCH_CLIENT_ID);
+				body.set("client_secret", env.TWITCH_CLIENT_SECRET);
+				endpoint = twitchTokenEndpoint;
 			}
 			
 			const res = await fetch(endpoint, {
@@ -135,8 +146,11 @@ export default {
 				providerInfo = await getGoogleUser(tokens.access_token);
 			} else if(KVstate.auth == "slack"){
 				providerInfo = await getSlackUser(tokens);
-			} else if(KVstate.auth = "discord"){
+			} else if(KVstate.auth == "discord"){
 				providerInfo = await getDiscordUser(tokens.access_token);
+			} else if(KVstate.auth == "twitch"){
+				providerInfo = await getTwitchUser(tokens.access_token, env.TWITCH_CLIENT_ID);
+				console.log("twitch info",providerInfo);
 			}
 
 			return new Response(JSON.stringify(tokens),{
@@ -231,10 +245,10 @@ async function getSlackUser(tokens) {
 }
 
 async function getDiscordUser(access_token) {
-	console.log("logged in via discord tokens",tokens);
+	// console.log("logged in via discord tokens",tokens);
 	const discordInfo = await fetch("https://discord.com/api/v10/users/@me",{
 		headers:{
-			"Authorization":`Bearer ${tokens.access_token}`
+			"Authorization":`Bearer ${access_token}`
 		}
 	});
 	if(!discordInfo.ok)
@@ -247,6 +261,27 @@ async function getDiscordUser(access_token) {
 		email: json.email,
 	};
 }
+async function getTwitchUser(access_token, client_id) {
+	const twitchInfo = await fetch(`https://api.twitch.tv/helix/users`,{
+		headers:{
+			"Authorization":`Bearer ${access_token}`,
+			"User-Agent": userAgent,
+			"Client-Id": client_id
+		}
+	});
+	if(!twitchInfo.ok)
+		throw new Error(`Twitch API failed with status code ${twitchInfo.status}. Text: `+await twitchInfo.text());
+	let json = await twitchInfo.json();
+	console.log("twitch info", json);
+	json = json.data[0];
+	return {
+		username: json.login,
+		id: json.id,
+		email: json.email,
+	};
+}
+
+
 
 const generateRandomString = (length) => {
   let result = '';
