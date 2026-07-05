@@ -22,24 +22,34 @@ export default {
 			const response_type = "code"; query.set("response_type", response_type);
 			query.set("redirect_uri", redirect_uri);
 			const state = generateRandomString(32); query.set("state", state );
+			let client_id;
+			let provider;
 
 			if(pathname.endsWith("github")){
 				forward_url = new URL("https://github.com/login/oauth/authorize");
-				const client_id = env.GITHUB_CLIENT_ID; query.set("client_id", client_id);
-				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"github"}), {expirationTtl: 60});
+				client_id = env.GITHUB_CLIENT_ID;
+				provider = "github";
 			} else if(pathname.endsWith("google")){
 				forward_url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-				const client_id = env.GOOGLE_CLIENT_ID; query.set("client_id", client_id);
+				client_id = env.GOOGLE_CLIENT_ID;
 				query.set("scope", "email profile");
-				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"google"}), {expirationTtl: 60});
+				provider = "google";
 			} else if(pathname.endsWith("slack")){
 				forward_url = new URL("https://slack.com/oauth/v2/authorize");
-				const client_id = env.SLACK_CLIENT_ID; query.set("client_id", client_id);
+				client_id = env.SLACK_CLIENT_ID;
 				query.set("scope", "users:read");
-				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"slack"}), {expirationTtl: 60});
+				provider = "slack";
+			}else if(pathname.endsWith("discord")){
+				forward_url = new URL("https://discord.com/oauth2/authorize");
+				client_id = env.DISCORD_CLIENT_ID;
+				query.set("scope", "identify email");
+				provider = "discord";
 			} else {
 				throw new Error("That OAuth 2.0 provider is currently not supported");
 			}
+
+			await env.OAUTH_STATE.put(state, JSON.stringify({auth: provider}), {expirationTtl: 60});
+			query.set("client_id", client_id);
 
 			forward_url.search = query.toString();
 			return new Response("You are currently being redirected to " + forward_url.toString(),{
@@ -52,6 +62,7 @@ export default {
 			const githubTokenEndpoint = "https://github.com/login/oauth/access_token";
 			const googleTokenEndpoint = "https://oauth2.googleapis.com/token";
 			const slackTokenEndpoint = "https://slack.com/api/oauth.v2.access";
+			const discordTokenEndpoint = "https://discord.com/api/oauth2/token";
 			const query = new URL(request.url).searchParams;
 			const code = query.get("code");
 			const state = query.get("state");
@@ -81,6 +92,10 @@ export default {
 				body.set("client_id", env.SLACK_CLIENT_ID);
 				body.set("client_secret", env.SLACK_CLIENT_SECRET);
 				endpoint = slackTokenEndpoint;
+			} else if(KVstate.auth == "discord"){
+				body.set("client_id", env.DISCORD_CLIENT_ID);
+				body.set("client_secret", env.DISCORD_CLIENT_SECRET);
+				endpoint = discordTokenEndpoint;
 			}
 			
 			const res = await fetch(endpoint, {
@@ -91,7 +106,6 @@ export default {
 				body: body.toString(),
 			});
 
-			// console.log(res);
 			const resText = await res.text();
 
 			if(!res.ok){
@@ -111,26 +125,19 @@ export default {
 				default:
 					return new Response("Could not detect a usable format for token exchange");
 			}
+
+			let providerInfo; // {username, id, email}
 			
 			if(KVstate.auth == "github"){
-				const primaryEmail = getGithubUserEmail(tokens.access_token);
-				const username = await getGithubUsername(tokens.access_token);
-				console.log("primary email", primaryEmail);
-				console.log("username", username);
+				providerInfo = await getGithubUser(tokens.access_token);
+				providerInfo.email = await getGithubUserEmail(tokens.access_token);
 			} else if(KVstate.auth == "google"){
-				const email = await getGoogleEmail(tokens.access_token);
-				console.log("google email", email);
+				providerInfo = await getGoogleUser(tokens.access_token);
 			} else if(KVstate.auth == "slack"){
-				const slackInfo = await fetch(`https://slack.com/api/users.info?user=${tokens.authed_user.id}`, {
-					headers: {
-						'Authorization' : `Bearer ${tokens.access_token}`
-					}
-				});
-				if(!slackInfo.ok)
-					throw new Error(`Slack API failed with status ${slackInfo.status}. Text: `+await slackInfo.json());
-				console.log("slack user info:", await slackInfo.json());
+				providerInfo = await getSlackUser(tokens);
+			} else if(KVstate.auth = "discord"){
+				providerInfo = await getDiscordUser(tokens.access_token);
 			}
-			
 
 			return new Response(JSON.stringify(tokens),{
 				headers:{
@@ -168,7 +175,7 @@ async function getGithubUserEmail(access_token){
 	}
 }
 
-async function getGithubUsername(access_token){
+async function getGithubUser(access_token){
 	const res = await fetch("https://api.github.com/user",{
 		headers: {
 			"Authorization" : `Bearer ${access_token}`,
@@ -179,11 +186,14 @@ async function getGithubUsername(access_token){
 	if(!res.ok)
 		throw new Error(`Github /user API failed with code ${res.status}. Text:`, await res.text());
 	const json = await res.json();
-	console.log("github /user",json);
-	return json.login;
+	// console.log("github /user",json);
+	return {
+		username: json.login,
+		id: json.id
+	};
 }
 
-async function getGoogleEmail(access_token){
+async function getGoogleUser(access_token){
 	const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
 		headers: {
 			'Authorization' : `Bearer ${access_token}`,
@@ -194,8 +204,48 @@ async function getGoogleEmail(access_token){
 	if(!res.ok){
 		throw new Error("Google API failed while trying to fetch Email. Text: " + await res.text());
 	}
+	const json = await res.json(); 
+	console.log("google user info", json);
+	return {
+		username: json.name,
+		email: json.email,
+		id: json.sub
+	};
+}
 
-	return await res.text();
+async function getSlackUser(tokens) {
+	const slackInfo = await fetch(`https://slack.com/api/users.info?user=${tokens.authed_user.id}`, {
+		headers: {
+			'Authorization' : `Bearer ${tokens.access_token}`
+		}
+	});
+	if(!slackInfo.ok)
+		throw new Error(`Slack API failed with status ${slackInfo.status}. Text: `+await slackInfo.text());
+	const slackJson = await slackInfo.json();
+	
+	return {
+		username: slackJson.user.name,
+		id: slackJson.user.id,
+		email: slackJson.user.profile.email,
+	};
+}
+
+async function getDiscordUser(access_token) {
+	console.log("logged in via discord tokens",tokens);
+	const discordInfo = await fetch("https://discord.com/api/v10/users/@me",{
+		headers:{
+			"Authorization":`Bearer ${tokens.access_token}`
+		}
+	});
+	if(!discordInfo.ok)
+		throw new Error(`Discord API failed with status code ${discordInfo.status}. Text: `+await discordInfo.text());
+	const json = await discordInfo.json()
+	// console.log("discord info", json);
+	return {
+		username: json.username,
+		id: json.id,
+		email: json.email,
+	};
 }
 
 const generateRandomString = (length) => {
