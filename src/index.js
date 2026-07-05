@@ -15,7 +15,6 @@ export default {
 		const pathname = new URL(request.url).pathname;
 
 		const redirect_uri = "http://localhost:8787/callback";
-		console.log("not real: ", await env.OAUTH_STATE.get("1234!"));
 
 		if(pathname.startsWith("/oauth/")){
 			let forward_url;
@@ -26,17 +25,24 @@ export default {
 
 			if(pathname.endsWith("github")){
 				forward_url = new URL("https://github.com/login/oauth/authorize");
-				const client_id = env.GITUHB_CLIENT_ID; query.set("client_id", client_id);
+				const client_id = env.GITHUB_CLIENT_ID; query.set("client_id", client_id);
 				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"github"}), {expirationTtl: 60});
 			} else if(pathname.endsWith("google")){
 				forward_url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 				const client_id = env.GOOGLE_CLIENT_ID; query.set("client_id", client_id);
 				query.set("scope", "email profile");
 				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"google"}), {expirationTtl: 60});
-			}			
+			} else if(pathname.endsWith("slack")){
+				forward_url = new URL("https://slack.com/oauth/v2/authorize");
+				const client_id = env.SLACK_CLIENT_ID; query.set("client_id", client_id);
+				query.set("scope", "users:read");
+				await env.OAUTH_STATE.put(state, JSON.stringify({auth:"slack"}), {expirationTtl: 60});
+			} else {
+				throw new Error("That OAuth 2.0 provider is currently not supported");
+			}
 
 			forward_url.search = query.toString();
-			return new Response("",{
+			return new Response("You are currently being redirected to " + forward_url.toString(),{
 				status: 302,
 				headers: {
 					'Location' : forward_url.toString()
@@ -45,6 +51,7 @@ export default {
 		} else if(pathname == "/callback"){
 			const githubTokenEndpoint = "https://github.com/login/oauth/access_token";
 			const googleTokenEndpoint = "https://oauth2.googleapis.com/token";
+			const slackTokenEndpoint = "https://slack.com/api/oauth.v2.access";
 			const query = new URL(request.url).searchParams;
 			const code = query.get("code");
 			const state = query.get("state");
@@ -70,9 +77,13 @@ export default {
 				body.set("client_id", env.GOOGLE_CLIENT_ID);
 				body.set("client_secret", env.GOOGLE_CLIENT_SECRET);
 				endpoint = googleTokenEndpoint;
+			} else if(KVstate.auth == "slack"){
+				body.set("client_id", env.SLACK_CLIENT_ID);
+				body.set("client_secret", env.SLACK_CLIENT_SECRET);
+				endpoint = slackTokenEndpoint;
 			}
 			
-			const res = await fetch(googleTokenEndpoint, {
+			const res = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type' : 'application/x-www-form-urlencoded',
@@ -84,7 +95,7 @@ export default {
 			const resText = await res.text();
 
 			if(!res.ok){
-				return new Response("Sorry, the authorization code exchanged failed :(");
+				return new Response("Sorry, the authorization code exchanged failed :( Text: " + resText);
 			}
 
 			let tokens = {};
@@ -109,6 +120,15 @@ export default {
 			} else if(KVstate.auth == "google"){
 				const email = await getGoogleEmail(tokens.access_token);
 				console.log("google email", email);
+			} else if(KVstate.auth == "slack"){
+				const slackInfo = await fetch(`https://slack.com/api/users.info?user=${tokens.authed_user.id}`, {
+					headers: {
+						'Authorization' : `Bearer ${tokens.access_token}`
+					}
+				});
+				if(!slackInfo.ok)
+					throw new Error(`Slack API failed with status ${slackInfo.status}. Text: `+await slackInfo.json());
+				console.log("slack user info:", await slackInfo.json());
 			}
 			
 
@@ -159,12 +179,12 @@ async function getGithubUsername(access_token){
 	if(!res.ok)
 		throw new Error(`Github /user API failed with code ${res.status}. Text:`, await res.text());
 	const json = await res.json();
-	console.log(json);
+	console.log("github /user",json);
 	return json.login;
 }
 
 async function getGoogleEmail(access_token){
-	const res = await fetch("https://www.googleapis.com/auth/userinfo.profile", {
+	const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
 		headers: {
 			'Authorization' : `Bearer ${access_token}`,
 			'User-Agent' : userAgent
