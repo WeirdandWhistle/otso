@@ -28,26 +28,26 @@ export default {
 			let client_id;
 			let provider;
 
-			if(pathname.endsWith("github")){
+			if(pathname.endsWith("/github")){
 				forward_url = new URL("https://github.com/login/oauth/authorize");
 				client_id = env.GITHUB_CLIENT_ID;
 				provider = "github";
-			} else if(pathname.endsWith("google")){
+			} else if(pathname.endsWith("/google")){
 				forward_url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 				client_id = env.GOOGLE_CLIENT_ID;
 				query.set("scope", "email profile");
 				provider = "google";
-			} else if(pathname.endsWith("slack")){
+			} else if(pathname.endsWith("/slack")){
 				forward_url = new URL("https://slack.com/oauth/v2/authorize");
 				client_id = env.SLACK_CLIENT_ID;
 				query.set("scope", "users:read");
 				provider = "slack";
-			} else if(pathname.endsWith("discord")){
+			} else if(pathname.endsWith("/discord")){
 				forward_url = new URL("https://discord.com/oauth2/authorize");
 				client_id = env.DISCORD_CLIENT_ID;
 				query.set("scope", "identify email");
 				provider = "discord";
-			} else if(pathname.endsWith("twitch")){
+			} else if(pathname.endsWith("/twitch")){
 				forward_url = new URL("https://id.twitch.tv/oauth2/authorize");
 				client_id = env.TWITCH_CLIENT_ID;
 				query.set("scope", "user:read:email");
@@ -203,7 +203,7 @@ export default {
 
 				const OAuthStateTemp = db.oauthStateGet(env, state);
 				if(!OAuthStateTemp)
-					return new Response("That is not a real state.", { status: 400 });
+					return new Response("Invalid State.", { status: 400 });
 
 				const OAuthState = JSON.parse(OAuthStateTemp);
 				let username = OAuthState.issuerInfo.username;
@@ -214,9 +214,25 @@ export default {
 
 				let email = OAuthState.issuerInfo.email;
 				const id = OAuthState.issuerInfo.id;
+				const issuer = OAuthState.issuerInfo.issuer;
+				const access_token = OAuthState.issuerInfo.access_token;
+				const refresh_token = OAuthState.issuerInfo.refresh_token;
 
+				const userID = generateUserID();
+				db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
 				
-
+				if(OAuthState.redirect_from){
+					return new Response("", {
+						status: 200,
+						headers: {
+							"Content-Type" : "application/json"
+						},
+						body: JSON.stringify({
+							redirect_uri: OAuthState.redirect_from
+						}),
+					});
+				}
+				return new Response(`{"ok":true}`);
 			}
 		}
 
@@ -239,7 +255,11 @@ const generateRandomString = (length) => {
   }
   return result;
 };
-// const generateUserID
+const generateUserID = () => {
+	const buf = new Uint8Array(16);
+	crypto.getRandomValues(buf);
+	return buf.toBase64({alphabet: "base64url", omitPadding: true});
+};
 const allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_ ";
 const usernameMaxLength = 100;
 const validUsername = (username) => {
