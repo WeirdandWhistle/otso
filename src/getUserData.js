@@ -34,7 +34,8 @@ export async function getGithubUser(access_token){
 	// console.log("github /user",json);
 	return {
 		username: json.login,
-		id: json.id
+		id: json.id,
+        issuer: "github",
 	};
 }
 
@@ -53,7 +54,8 @@ export async function getGoogleUser(access_token){
 	return {
 		username: json.name,
 		email: json.email,
-		id: json.sub
+		id: json.sub,
+        issuer: "google",
 	};
 }
 
@@ -72,6 +74,7 @@ export async function getSlackUser(tokens) {
 		username: slackJson.user.name,
 		id: slackJson.user.id,
 		email: slackJson.user.profile.email,
+        issuer: "slack",
 	};
 }
 
@@ -91,6 +94,7 @@ export async function getDiscordUser(access_token) {
 		username: json.username,
 		id: json.id,
 		email: json.email,
+        issuer: "discord",
 	};
 }
 export async function getTwitchUser(access_token, client_id) {
@@ -109,5 +113,6 @@ export async function getTwitchUser(access_token, client_id) {
 		username: json.login,
 		id: json.id,
 		email: json.email,
+        issuer: "discord",
 	};
 }
