@@ -20,7 +20,9 @@ export async function oauthStateGet(env, k){
         .prepare("SELECT stateData FROM OAuthState WHERE stateID=? LIMIT 1;")
         .bind(k)
         .run();
-    return res.results[0].stateData;
+    if(res.results.length > 0)
+        return res.results[0].stateData;
+    return null;
 }
 export async function oauthStateDelete(env, k) {
     await env.OTSO_DB

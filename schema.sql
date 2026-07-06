@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS Users;
 CREATE TABLE IF NOT EXISTS Users (
     userID TEXT NOT NULL PRIMARY KEY,
     authenticationMethods TEXT,
@@ -5,6 +6,7 @@ CREATE TABLE IF NOT EXISTS Users (
     username TEXT NOT NULL
 );
 
+DROP TABLE IF EXISTS Sessions;
 CREATE TABLE IF NOT EXISTS Sessions (
     sessionID TEXT NOT NULL PRIMARY KEY,
     stateData TEXT,
@@ -12,16 +14,13 @@ CREATE TABLE IF NOT EXISTS Sessions (
     FOREIGN KEY (userID) REFERENCES Users(userID)
 );
 
-CREATE TABLE IF NOT EXISTS UserCreationState (
-    stateID TEXT NOT NULL PRIMARY KEY,
-    stateData TEXT
-);
-
+DROP TABLE IF EXISTS OAuthState;
 CREATE TABLE IF NOT EXISTS OAuthState (
     stateID TEXT PRIMARY KEY,
     stateData TEXT
 );
 
+DROP TABLE IF EXISTS OAuthIssuers;
 CREATE TABLE IF NOT EXISTS OAuthIssuers (
     ID TEXT NOT NULL PRIMARY KEY,
     issuer TEXT NOT NULL,

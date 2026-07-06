@@ -160,6 +160,8 @@ export default {
 			} else {
 				throw new Error("Huh..?");
 			}
+			issuerInfo.access_token = tokens.access_token;
+			issuerInfo.refresh_token = tokens.refresh_token;
 
 			const user = await db.getUser(env, issuerInfo.id, issuerInfo.issuer);
 			console.log("after authed: user from db, ", user);
@@ -172,9 +174,6 @@ export default {
 				sp.set("state", state);
 				sp.set("username", issuerInfo.username);
 				sp.set("email", issuerInfo.email);
-
-				// const redirectURL = new URL("/firstTime");
-				// redirectURL.search = sp.toString;
 
 				const toURL = "/firstTime?" + sp.toString();
 
@@ -199,6 +198,24 @@ export default {
 
 		if(pathname.startsWith("/api/")){
 			if(pathname.endsWith("/createAccount") && request.method == 'POST'){
+				const postJson = await request.json();
+				const state = postJson.state; 
+
+				const OAuthStateTemp = db.oauthStateGet(env, state);
+				if(!OAuthStateTemp)
+					return new Response("That is not a real state.", { status: 400 });
+
+				const OAuthState = JSON.parse(OAuthStateTemp);
+				let username = OAuthState.issuerInfo.username;
+				if(validUsername(postJson.username))
+					username = postJson.username;
+				if(!validUsername(username))
+					username = correctUsername(username);
+
+				let email = OAuthState.issuerInfo.email;
+				const id = OAuthState.issuerInfo.id;
+
+				
 
 			}
 		}
@@ -222,3 +239,40 @@ const generateRandomString = (length) => {
   }
   return result;
 };
+// const generateUserID
+const allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_ ";
+const usernameMaxLength = 100;
+const validUsername = (username) => {
+	if(username.length <= 0 || username.length > usernameMaxLength)
+		return false;
+	for(let i = 0; i<username.length;i++){
+		if(!allowedChars.includes(username.getChar(i))){
+			return false;
+		}
+	}
+	return true;
+}
+const correctUsername = (username) => {
+	const res = '';
+	if(username.length <= 0){
+		for(let i = 0; i < 15; i++){
+			res += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
+		}
+		return res;
+	} else if(username.length > usernameMaxLength){
+		username = username.sub(0, usernameMaxLength-1);
+	}
+	
+	for(let i = 0; i<username.length;i++){
+		if(allowedChars.includes(username.getChar(i))){
+			res += username.getChar(i);
+		}
+	}
+	if(res.length <= 0){
+		for(let i = 0; i < 15; i++){
+			res += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
+		}
+		return res;
+	}
+	return res;
+}
