@@ -11,6 +11,7 @@
 const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.whynotjava.net)";
 // OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
+import * as db from "./databaseInteraction.js";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -55,7 +56,8 @@ export default {
 				throw new Error("That OAuth 2.0 provider is currently not supported");
 			}
 
-			await env.OAUTH_STATE.put(state, JSON.stringify({auth: provider}), {expirationTtl: 60});
+			// await env.OAUTH_STATE.put(state, JSON.stringify({auth: provider}), {expirationTtl: 60});
+			await db.oauthStatePut(env, state, JSON.stringify({auth: provider}));
 			query.set("client_id", client_id);
 
 			forward_url.search = query.toString();
@@ -76,10 +78,14 @@ export default {
 			const state = query.get("state");
 			const grant_type = "authorization_code";
 
-			const KVstateTemp = await env.OAUTH_STATE.get(state);
-			if(!KVstateTemp)
+			if(!code || !state)
+				return new Response("No client should ever be here without the quary params 'code' and 'state' for OAuth 2.0.", { status: 400 });
+
+			// const KVstateTemp = await env.OAUTH_STATE.get(state);
+			const OAuthStateTemp = await db.oauthStateGet(env, state);
+			if(!OAuthStateTemp)
 				return new Response("Invalid State", {status: 400});
-			const KVstate = JSON.parse(KVstateTemp);
+			const OAuthState = JSON.parse(OAuthStateTemp);
 			
 			const body = new URLSearchParams();
 			body.set("grant_type", grant_type);
@@ -88,23 +94,23 @@ export default {
 			
 			let endpoint;
 
-			if(KVstate.auth == "github"){
+			if(OAuthState.auth == "github"){
 				body.set("client_id", env.GITHUB_CLIENT_ID);
 				body.set("client_secret", env.GITHUB_CLIENT_SECRET);
 				endpoint = githubTokenEndpoint;
-			} else if(KVstate.auth == "google"){
+			} else if(OAuthState.auth == "google"){
 				body.set("client_id", env.GOOGLE_CLIENT_ID);
 				body.set("client_secret", env.GOOGLE_CLIENT_SECRET);
 				endpoint = googleTokenEndpoint;
-			} else if(KVstate.auth == "slack"){
+			} else if(OAuthState.auth == "slack"){
 				body.set("client_id", env.SLACK_CLIENT_ID);
 				body.set("client_secret", env.SLACK_CLIENT_SECRET);
 				endpoint = slackTokenEndpoint;
-			} else if(KVstate.auth == "discord"){
+			} else if(OAuthState.auth == "discord"){
 				body.set("client_id", env.DISCORD_CLIENT_ID);
 				body.set("client_secret", env.DISCORD_CLIENT_SECRET);
 				endpoint = discordTokenEndpoint;
-			} else if(KVstate.auth == "twitch"){
+			} else if(OAuthState.auth == "twitch"){
 				body.set("client_id", env.TWITCH_CLIENT_ID);
 				body.set("client_secret", env.TWITCH_CLIENT_SECRET);
 				endpoint = twitchTokenEndpoint;
@@ -138,39 +144,73 @@ export default {
 					return new Response("Could not detect a usable format for token exchange");
 			}
 
-			let providerInfo; // {username, id, email}
+			let issuerInfo; // {username, id, email, issuer}
 			
-			if(KVstate.auth == "github"){
-				providerInfo = await getGithubUser(tokens.access_token);
-				providerInfo.email = await getGithubUserEmail(tokens.access_token);
-			} else if(KVstate.auth == "google"){
-				providerInfo = await getGoogleUser(tokens.access_token);
-			} else if(KVstate.auth == "slack"){
-				providerInfo = await getSlackUser(tokens);
-			} else if(KVstate.auth == "discord"){
-				providerInfo = await getDiscordUser(tokens.access_token);
-			} else if(KVstate.auth == "twitch"){
-				providerInfo = await getTwitchUser(tokens.access_token, env.TWITCH_CLIENT_ID);
-				console.log("twitch info",providerInfo);
+			if(OAuthState.auth == "github"){
+				issuerInfo = await getGithubUser(tokens.access_token);
+				issuerInfo.email = await getGithubUserEmail(tokens.access_token);
+			} else if(OAuthState.auth == "google"){
+				issuerInfo = await getGoogleUser(tokens.access_token);
+			} else if(OAuthState.auth == "slack"){
+				issuerInfo = await getSlackUser(tokens);
+			} else if(OAuthState.auth == "discord"){
+				issuerInfo = await getDiscordUser(tokens.access_token);
+			} else if(OAuthState.auth == "twitch"){
+				issuerInfo = await getTwitchUser(tokens.access_token, env.TWITCH_CLIENT_ID);
+			} else {
+				throw new Error("Huh..?");
 			}
 
-			return new Response(JSON.stringify(providerInfo),{
+			const user = await db.getUser(env, issuerInfo.id, issuerInfo.issuer);
+			console.log("after authed: user from db, ", user);
+			if(!user){
+				
+				OAuthState.issuerInfo = issuerInfo;
+				db.oauthStatePut(state, JSON.stringify(OAuthState));
+
+				const sp = new URLSearchParams();
+				sp.set("state", state);
+				sp.set("username", issuerInfo.username);
+				sp.set("email", issuerInfo.email);
+
+				// const redirectURL = new URL("/firstTime");
+				// redirectURL.search = sp.toString;
+
+				const toURL = "/firstTime?" + sp.toString();
+
+				return new Response("You are currently being redirected to "+toURL,{
+					status: 302,
+					headers: {
+						"Location" : toURL
+					}
+				});
+			} else {
+				console.log("How to fu\n what ever. my first wish is to have...");
+			}
+			
+
+			db.oauthStateDelete(env, state);
+			return new Response(JSON.stringify(issuerInfo),{
 				headers:{
 					'Content-Type' : 'application/json'
 				}
 			});
 		}
 
+		if(pathname.startsWith("/api/")){
+			if(pathname.endsWith("/createAccount") && request.method == 'POST'){
+
+			}
+		}
+
 		return new Response("404 Not Found", {
 			status: 404,
 			headers: {
 				'Content-Type' : 'text',
-			}  
-		})
+			}
+		});
 	}		
 };
-
-
 
 const generateRandomString = (length) => {
   let result = '';
