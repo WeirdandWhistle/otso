@@ -31,13 +31,24 @@ export async function oauthStateDelete(env, k) {
         .run();
 }
 // user
-export async function getUser(env, id, provider) {
+export async function getUser(env, id, issuer) {
     const { results } = await env.OTSO_DB
         .prepare("SELECT * FROM users WHERE userID=(SELECT userID FROM OAuthIssuers WHERE id=? AND issuer=? LIMIT 1) LIMIT 1;")
-        .bind(id, provider)
+        .bind(id, issuer)
         .run();
 
     if(results.length > 0)
         return results[0];
     return null;
+}
+export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
+    await env.OTSO_DB
+        .prepare(`
+            INSERT INTO Users (userID, authenticationMethods, email, username)
+                VALUES (?, ?, ?, ?);
+            INSERT INTO OAuthIssuers (ID, issuer, username, email, access_token, refresh_token, userID) 
+                VALUES (?, ?, ?, ?, ?, ?, ?);
+            `)
+        .bind(userID, issuer, email, username, id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID)
+        .run();
 }
