@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Otso Guardian</title>
+    <style>
+        :root{
+            --login-with-width: 200px;
+            --color: rgb(220, 220, 220);
+            --background-color: #1c1b22; 
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        input{
+            color: var(--color);
+            border: none;
+            outline: none;
+            background-color: #2c2b32; 
+            padding-left: 0.3rem;
+            padding-right: 0.3rem;
+            min-width: 15.5rem;
+        }
+        .center{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card{
+            border: 1px var(--color) solid;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        pre{
+            display: inline;
+        }
+        hr{
+            background-color: var(--color);
+            color: var(--color);
+        }
+        button{
+            border: 1px var(--color) solid;
+            outline: none;
+            font-size: 1.3rem;
+            /* border-radius: 2rem; */
+            background-color: #2c2b32;
+            color: var(--color);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover{
+            background-color: #36353e;
+            transform: scale(1.05);
+            box-shadow: 5px 5px 5px black;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="card" style="min-width: 50rem;">
+        <greeting style="height: 6rem; flex-direction: column;" class="center">
+            <h1>First Time?</h1>
+            <p style="position: relative; top: -1.5rem; ">It's great to have you.</p>
+        </greeting>
+        
+        <hr style="width: 100%;">
+
+        <p>Please take a moment to confirm a few details about you.</p>
+        <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+            <pre>Username          :</pre> 
+            <input id="username" type="text" autocomplete="username">
+        </div>
+         <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+            <pre>Provider Email    :</pre>
+            <input id="email" type="email" autocomplete="email" disabled style="cursor: not-allowed;">
+        </div>
+         <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+            <pre>Provider username :</pre> 
+            <input id="providerUsername" disabled style="cursor: not-allowed;">
+        </div>
+
+        <button>Yup everything looks good</button>
+
+    </div>
+    <script>
+        const query = new URL(window.location).searchParams;
+        const state = query.get("state");
+        const username = query.get("username");
+        const email = query.get("email");
+
+        document.getElementById("username").value = username;
+        document.getElementById("email").value = email;
+        document.getElementById("providerUsername").value = username;
+    </script>
+</body>
+</html>
