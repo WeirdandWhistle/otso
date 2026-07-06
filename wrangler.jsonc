@@ -42,7 +42,17 @@
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/
 	 */
-	"assets": {  "directory": "./public/",  "binding": "ASSETS" },
+	"assets": {
+		"directory": "./public/",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "OTSO_DB",
+			"database_name": "otso-db",
+			"database_id": "7689955b-5803-42a4-b1c5-7577aef7a0bd"
+		}
+	],
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
