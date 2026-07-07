@@ -13,6 +13,7 @@ const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.why
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
 import * as db from "./databaseInteraction.js";
 import * as KV from "./customKV.js";
+import * as session from "./sessions.js";
 import * as OAuthProvider from "./OAuthProviderAPI.js";
 
 export default {
@@ -26,9 +27,9 @@ export default {
 			const query = new URLSearchParams();
 			const response_type = "code"; query.set("response_type", response_type);
 			query.set("redirect_uri", redirect_uri);
-			let state = query.set("state");
+			let state = query.get("state");
 			if(!state)
-				let state = generateRandomString(32);
+				state = generateRandomString(32);
 			query.set("state", state);
 			let client_id;
 			let provider;
@@ -64,7 +65,7 @@ export default {
 			let stateJson = KV.get(`state.${state}`);
 			if(!stateJson)
 				stateJson = {};
-			state.auth = provider;
+			stateJson.auth = provider;
 			KV.put(`state.${state}`, stateJson, 60);
 			query.set("client_id", client_id);
 
@@ -191,20 +192,30 @@ export default {
 					}
 				});
 			} else {
-				console.log("How to fu\n what ever. my first wish is to have...");
-			}
-			
-
-			KV.remove(state);
-			return new Response(JSON.stringify(issuerInfo),{
-				headers:{
-					'Content-Type' : 'application/json'
+				const sessionID = await session.issueSession(env, user.userID, request.headers);
+				const sessionCookie = session.getCookie(sessionID);
+				if(OAuthState.redirect_from){
+					return new Response("You are currently being redirected to: "+OAuthState.redirect_from,{
+						status: 302,
+						headers:{
+							"Location": OAuthState.redirect_from,
+							"Set-Cookie": sessionCookie
+						}
+					});
+				} else {
+					KV.remove(state);
+					return new Response(JSON.stringify(issuerInfo),{
+						headers:{
+							'Content-Type' : 'application/json'
+						}
+					});
 				}
-			});
+			}
+			throw new Error("this code is unreachable");
 		}
 
 		if(pathname.startsWith("/api/")){
-			if(ratelimit(`${request.headers.get("CF-Connecting-IP")}${pathname}`, 60))
+			if(ratelimit(`${request.headers.get("CF-Connecting-IP")}.${pathname}`, 60))
 					return new Response("429 Too Many Requets", {status: 429});
 			if(pathname.endsWith("/createAccount")){
 				if(request.method != 'POST')
@@ -212,11 +223,12 @@ export default {
 				const postJson = await request.json();
 				const state = postJson.state; 
 
-				const OAuthStateTemp = db.oauthStateGet(env, state);
-				if(!OAuthStateTemp)
-					return new Response("Invalid State.", { status: 400 });
+				const OAuthState = KV.get(`state.${state}`);
+				if(!OAuthState)
+					return new Response(`{"ok":false,"error":"invalid_state"}`, { status: 400 });
+				// console.log("OAuthState createACoount", OAuthState);
+				// console.log("postJson createACoount", postJson);
 
-				const OAuthState = JSON.parse(OAuthStateTemp);
 				let username = OAuthState.issuerInfo.username;
 				if(validUsername(postJson.username))
 					username = postJson.username;
@@ -232,18 +244,21 @@ export default {
 				const userID = generateUserID();
 				db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
 				
-				if(OAuthState.redirect_from){
-					return new Response("", {
-						status: 200,
-						headers: {
-							"Content-Type" : "application/json"
-						},
-						body: JSON.stringify({
-							redirect_uri: OAuthState.redirect_from
-						}),
-					});
-				}
-				return new Response(`{"ok":true}`);
+				const headers = new Headers();
+
+				const sessionID = await session.issueSession(env, userID, request.headers);
+				const sessionCookie = session.getCookie(sessionID);			
+				headers.append("Set-Cookie", sessionCookie);
+				headers.append("Content-Type","application/json");	
+
+				return new Response("", {
+					status: 200,
+					headers: headers,
+					body: JSON.stringify({
+						ok: true,
+						redirect_uri: OAuthState.redirect_from,
+					}),
+				});
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
 				return OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
@@ -264,8 +279,7 @@ export default {
 const ratelimit = (key, perMinute) => {
 	const lookupKey = `Ratelimiter.${key}`;
 	let timestamps = KV.get(lookupKey);
-	if(!v){
-		KV.put(lookupKey, [], 60);
+	if(!timestamps){
 		timestamps = [];
 	}
 	timestamps.push(Date.now());
@@ -301,7 +315,7 @@ const validUsername = (username) => {
 	if(username.length <= 0 || username.length > usernameMaxLength)
 		return false;
 	for(let i = 0; i<username.length;i++){
-		if(!allowedChars.includes(username.getChar(i))){
+		if(!allowedChars.includes(username.charAt(i))){
 			return false;
 		}
 	}
@@ -319,8 +333,8 @@ const correctUsername = (username) => {
 	}
 	
 	for(let i = 0; i<username.length;i++){
-		if(allowedChars.includes(username.getChar(i))){
-			res += username.getChar(i);
+		if(allowedChars.includes(username.charAt(i))){
+			res += username.charAt(i);
 		}
 	}
 	if(res.length <= 0){
