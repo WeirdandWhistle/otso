@@ -8,6 +8,8 @@ export function put(key, value, ttl){
 export function get(key){
     clean();
     const value = KV.get(key);
+    if(!value)
+        return null;
     if(value.ttl >= Date.now()){
         KV.delete(key);
         return null;
