@@ -11,8 +11,5 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.4",
     "wrangler": "^4.107.0"
-  },
-  "dependencies": {
-    "@openauthjs/openauth": "^0.4.3"
   }
 }
