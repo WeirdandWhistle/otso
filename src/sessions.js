@@ -7,7 +7,7 @@ export async function issueSession(env, userID, headers){
     return sessionID;
 }
 export function getCookie(sessionID){
-    return `session=${sessionID}; HttpOnly`;
+    return `session=${sessionID}; HttpOnly; Path=/`;
 }
 
 const generateSecureChars = (length) => {
