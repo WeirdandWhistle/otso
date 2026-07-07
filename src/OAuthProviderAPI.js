@@ -4,7 +4,8 @@ import * as db from "./databaseInteraction.js";
 export async function authorize(request, env, KV){
     if(request.method != "GET")
         return new Response("400 Bad request. The appropriate HTTP method is 'GET'.", {status: 400});
-    const query = request.url.searchParams;
+    // console.log(request.url);
+    const query = new URL(request.url).searchParams;
 
     const client_id = query.get("client_id");
     const response_type = query.get("response_type");
@@ -18,47 +19,80 @@ export async function authorize(request, env, KV){
     if(!OAuthClient)
         return new Response(`{"error":"invalid_request","error_description":"404 Client does not exist. Check your client_id field."}`, {status: 404});
 
+    let redirect_uri = query.get("redirect_uri");
+    let verifiyedRedirectURI = false;
+    const redirectionURIs = OAuthClient.redirection_URIs ? OAuthClient.redirection_URIs.split(" ") : null;
+    console.log(redirect_uri);
+    if(redirectionURIs || redirect_uri){
+        if(!redirectionURIs && redirect_uri){
+            verifiyedRedirectURI = true;
+        } else if(redirectionURIs.length == 1){
+            if(!redirect_uri)
+                return new Response(`{"error":"invalid_request","error_description":"redirect_uri is incorrect. Must have one valid redirect_uri. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
+            verifiyedRedirectURI = true;
+            redirect_uri = redirectionURIs[0];
+        } else if(!verifiyedRedirectURI && redirectionURIs.length > 1){
+            for(const uri of redirectionURIs){
+                if(uri == redirect_uri){
+                    verifiyedRedirectURI;
+                    break;
+                }
+            }
+        }
+    } else {
+        return new Response(`{"error":"invalid_request","error_description":"A redirection must be registered OR provided."}`,{status:400});
+    }
+    if(!verifiyedRedirectURI)
+        return new Response(`{"error":"server_error","error_description":"Sorry, the server ran into an unexpected edge case. Please contact an admin"}`,{status:500});
+
+    if(!query.get("scope"))
+        return new Response(`{"error":"invalid_scope","error_description":"Scope can not be nothing."}`,{status:400});
+
+    const scopes = query.get("scope").split(" ");
+    if(scopes.length == 0)
+        return new Response(`{"error":"invalid_scope","error_description":"Scope can not be nothing."}`,{status:400});
+
     let user = await getUserIfSession(request, env);
     if(!user){
         // TODO: send to login/signup/authenticaton page
         return new Response("TODO: send to login/signup/authenticaton page");
     }
-    const authorizedApps = user.authorizedApps.split(" ");
+    const authorizedApps = user.authorizedApps ? user.authorizedApps.split(" ") : null;
     let isAppAuthorized = false;
-    for(const app of authorizedApps){
-        if(app == client_id){
-            isAppAuthorized = true;
-            break;
-        }
-    }
-    if(!isAppAuthorized){
-        // TODO: send authorization page
-        return new Response("TODO: send authorization page");
-    }
-    let redirect_uri = query.get("redirect_uri");
-    let verifiyedRedirectURI = false;
-    const redirectionURIs = OAuthClient.redirection_URIs.split(" ");
-
-    if(redirectionURIs.length == 1){
-        if(!redirect_uri)
-            return new Response(`{"error":"invalid_request","error_description":"redirect_uri is incorrect. Must have one valid redirect_uri. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
-        verifiyedRedirectURI = true;
-        redirect_uri = redirectionURIs[0];
-    } else if(!verifiyedRedirectURI && redirectionURIs.length > 1){
-        for(const uri of redirectionURIs){
-            if(uri == redirect_uri){
-                verifiyedRedirectURI;
+    if(authorizedApps){
+        for(const app of authorizedApps){
+            if(app == client_id){
+                isAppAuthorized = true;
                 break;
             }
         }
     }
-    if(!verifiyedRedirectURI)
-        return new Response(`{"error":"server_error","error_description":"Sorry, the server ran into an unexpected edge case. Please contact an admin"}`,{status:500});
+    if(!isAppAuthorized){
+        // TODO: send authorization page
+        const HTMLPage = await env.ASSETS.fetch(new Request(`${env.HOST}/authorizeApp.html`));
+        // console.log("html page", HTMLPage);
+        const dataToEncode = {
+            appName: OAuthClient.name,
+            username: user.username,
+        };
+        let base64Encoded;
+        if(1){ // name space shenaigins
+            const arr = new TextEncoder().encode(JSON.stringify(dataToEncode));
+            base64Encoded = arr.toBase64({alphabet: "base64url", omitPadding: true});
+        }
 
-    const scopes = query.get("scope").split(" ");
-    if(scopes.length == 0)
-        return new Response(`{"error":"invalid_scope","error_description":"Scope can not be nothing."}`,{status:500});
+        const headers = new Headers(HTMLPage.headers);
+        // console.log("headers",headers);
+        headers.append("Set-Cookie", `authorizeAppData=${base64Encoded}; Expires=${new Date(Date.now() + 5 * 1000).toUTCString()}; Path=/`);
 
+        const body = await HTMLPage.text();
+
+        const res = new Response(body, {
+            headers: headers,
+            status: 200,
+        });
+        return res;
+    }
 
 
     if(response_type == "code"){
@@ -152,15 +186,17 @@ async function issueAccessToken(env, userID, client_id, scopes, ttl){
 }
 // if request has valid session then get the user profile ELSE null
 async function getUserIfSession(request, env){
-    const cookiesArray = request.header.get("Cookie").split(";");
+    const cookiesArray = request.headers.get("Cookie").split(";");
     let sessionID;
     for(const cookie of cookiesArray){
-        if(cookie.split("=")[0] == "sessionID")
+        if(cookie.split("=")[0] == "session")
             sessionID = cookie.split("=")[1];
     }
+    
     if(!sessionID)
         return null;
     const userID = await db.getUserIDFromSession(env, sessionID);
+    console.log(userID);
     if(!userID)
         return null;
     return await db.getUserFromUserID(env, userID);
