@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Otso Guardian</title>
+    <style>
+        :root{
+            --login-with-width: 200px;
+            --color: rgb(220, 220, 220);
+            --background-color: #1c1b22; 
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        input{
+            color: var(--color);
+            border: none;
+            outline: none;
+            background-color: #2c2b32; 
+            padding-left: 0.3rem;
+            padding-right: 0.3rem;
+            min-width: 15.5rem;
+        }
+        .center{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card{
+            border: 1px var(--color) solid;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        pre{
+            display: inline;
+        }
+        hr{
+            background-color: var(--color);
+            color: var(--color);
+        }
+        button{
+            border: 1px var(--color) solid;
+            outline: none;
+            font-size: 1.3rem;
+            /* border-radius: 2rem; */
+            background-color: #2c2b32;
+            color: var(--color);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 20rem;
+        }
+        button:hover{
+            background-color: #36353e;
+            transform: scale(1.05);
+            box-shadow: 5px 5px 5px black;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="card" style="min-width: 50rem;">
+        <greeting style="height: 6rem; flex-direction: column;" class="center">
+            <h1 id="header"></h1>
+            <p style="position: relative; top: -1.5rem; ">Would like to access your Otso account.</p>
+        </greeting>
+
+        <hr style="width: 100%;">
+        
+        <p>Currently logged in as <span id="username" style="font-weight: bold;"></span>.<br></p>
+        <p>After choosing an option you will be redirected back to <span style="font-weight: bold;" id="redirectWebsite"></span>.</p>
+               
+
+        <p>This would allow <span id="appName" style="font-weight: bold;"></span> to:</p>
+        <ul id="list">
+        </ul>
+
+
+        <button onclick="cancel()">Cancel</button>
+        <button onclick="authApp()">Authorize</button>
+
+    </div>
+    <script>
+        const cookieArray = document.cookie.split(";");
+        
+        let authorizeAppData;
+        for(const cookie of cookieArray){
+            const arr = cookie.split("=");
+            if(arr[0].trim() == 'authorizeAppData'){
+                authorizeAppData = arr[1];
+                break;
+            }
+        }
+        console.log(authorizeAppData);
+        const buffer = Uint8Array.fromBase64(authorizeAppData, {alphabet: "base64url"});
+        const data = JSON.parse(new TextDecoder().decode(buffer.buffer));
+        const username = data.username;
+        
+        document.getElementById("header").innerText = data.appName;
+        document.getElementById("appName").innerText = data.appName;
+        document.getElementById("username").innerText = username;
+        document.getElementById("redirectWebsite").innerText = new URL(window.location).hostname;
+        const list = document.getElementById("list");
+
+        const scope = new URL(window.location).searchParams.get("scope").split(" ");
+        scope.sort();
+        for(let i = 0; i<scope.length;i++){
+            list.insertAdjacentHTML("beforeend", `<li id="listNum${i}"></li`);
+
+            const on = document.getElementById(`listNum${i}`);
+            on.innerText = textForScope(scope[i]);
+        }
+
+        function cancel() {
+            const redirect_uri = new URL(window.location).searchParams.get("redirect_uri");
+            const params = new URLSearchParams();
+            params.set("error","request_denied");
+            params.set("error_description","The user has denied the access.");
+        }
+
+        function textForScope(scope){
+            switch (scope) {
+                case "email":
+                    return "See your email address.";
+                case "id":
+                    return "See your Internal userID, which is not a secret.";
+                case "pfp":
+                    return "See your profile picture";
+                case "name":
+                    return `See your username. (${username})`;
+                case "refresh_token":
+                    return "Allows the authorized app to preform actions on your behalf with out getting you to login again.";
+                case "write:username":
+                    return "Allows the authorized app to change your username.";                
+                default:
+                    "unknown property, does nothing";
+            }
+        }        
+    </script>
+</body>
+</html>
