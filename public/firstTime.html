@@ -89,7 +89,7 @@
             <input id="providerUsername" disabled style="cursor: not-allowed;">
         </div>
 
-        <button>Yup everything looks good</button>
+        <button onclick="postAccount()">Yup everything looks good</button>
 
     </div>
     <script>
@@ -101,6 +101,29 @@
         document.getElementById("username").value = username;
         document.getElementById("email").value = email;
         document.getElementById("providerUsername").value = username;
+
+        async function postAccount(){
+            const res = await fetch("/api/createAccount", {
+                method: 'POST',
+                body: JSON.stringify({
+                    username: username,
+                    state: state,
+                })
+            });
+            if(!res.ok){
+                alert("account API faild");
+                throw new Error(res);
+            }
+            const json = await res.json();
+            let pathname = "/";
+            if(json.redirect_uri){
+                pathname = json.redirect_uri;
+            }
+            const url = new URL(window.location);
+            url.pathname = pathname;
+            window.location = url.toString();
+
+        }
     </script>
 </body>
 </html>
