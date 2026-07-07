@@ -12,6 +12,8 @@ const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.why
 // OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
 import * as db from "./databaseInteraction.js";
+import * as KV from "./customKV.js";
+import * as OAuthProvider from "./OAuthProviderAPI.js";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -24,7 +26,10 @@ export default {
 			const query = new URLSearchParams();
 			const response_type = "code"; query.set("response_type", response_type);
 			query.set("redirect_uri", redirect_uri);
-			const state = generateRandomString(32); query.set("state", state );
+			let state = query.set("state");
+			if(!state)
+				let state = generateRandomString(32);
+			query.set("state", state);
 			let client_id;
 			let provider;
 
@@ -56,8 +61,11 @@ export default {
 				throw new Error("That OAuth 2.0 provider is currently not supported");
 			}
 
-			// await env.OAUTH_STATE.put(state, JSON.stringify({auth: provider}), {expirationTtl: 60});
-			await db.oauthStatePut(env, state, JSON.stringify({auth: provider}));
+			let stateJson = KV.get(`state.${state}`);
+			if(!stateJson)
+				stateJson = {};
+			state.auth = provider;
+			KV.put(`state.${state}`, stateJson, 60);
 			query.set("client_id", client_id);
 
 			forward_url.search = query.toString();
@@ -82,10 +90,9 @@ export default {
 				return new Response("No client should ever be here without the quary params 'code' and 'state' for OAuth 2.0.", { status: 400 });
 
 			// const KVstateTemp = await env.OAUTH_STATE.get(state);
-			const OAuthStateTemp = await db.oauthStateGet(env, state);
-			if(!OAuthStateTemp)
+			let OAuthState = KV.get(`state.${state}`);
+			if(!OAuthState)
 				return new Response("Invalid State", {status: 400});
-			const OAuthState = JSON.parse(OAuthStateTemp);
 			
 			const body = new URLSearchParams();
 			body.set("grant_type", grant_type);
@@ -163,12 +170,12 @@ export default {
 			issuerInfo.access_token = tokens.access_token;
 			issuerInfo.refresh_token = tokens.refresh_token;
 
-			const user = await db.getUser(env, issuerInfo.id, issuerInfo.issuer);
+			const user = await db.getUserFromIssuer(env, issuerInfo.id, issuerInfo.issuer);
 			console.log("after authed: user from db, ", user);
 			if(!user){
 				
 				OAuthState.issuerInfo = issuerInfo;
-				db.oauthStatePut(state, JSON.stringify(OAuthState));
+				KV.put(`state.${state}`, OAuthState, 60);
 
 				const sp = new URLSearchParams();
 				sp.set("state", state);
@@ -188,7 +195,7 @@ export default {
 			}
 			
 
-			db.oauthStateDelete(env, state);
+			KV.remove(state);
 			return new Response(JSON.stringify(issuerInfo),{
 				headers:{
 					'Content-Type' : 'application/json'
@@ -197,7 +204,11 @@ export default {
 		}
 
 		if(pathname.startsWith("/api/")){
-			if(pathname.endsWith("/createAccount") && request.method == 'POST'){
+			if(ratelimit(`${request.headers.get("CF-Connecting-IP")}${pathname}`, 60))
+					return new Response("429 Too Many Requets", {status: 429});
+			if(pathname.endsWith("/createAccount")){
+				if(request.method != 'POST')
+					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
 				const state = postJson.state; 
 
@@ -233,8 +244,12 @@ export default {
 					});
 				}
 				return new Response(`{"ok":true}`);
+			} else if(pathname.startsWith("/api/oauth2/authorize")){
+				return OAuthProvider.authorize(request, env, KV);
+			} else if(pathname.startsWith("/api/oauth2/token")){
+				return OAuthProvider.token(request, env, KV);
 			}
-		}
+		} 
 
 		return new Response("404 Not Found", {
 			status: 404,
@@ -245,6 +260,26 @@ export default {
 	}		
 };
 
+// returns true/false. true for being ratelimited, and false when under the limit
+const ratelimit = (key, perMinute) => {
+	const lookupKey = `Ratelimiter.${key}`;
+	let timestamps = KV.get(lookupKey);
+	if(!v){
+		KV.put(lookupKey, [], 60);
+		timestamps = [];
+	}
+	timestamps.push(Date.now());
+	for(let i = 0; i<timestamps.length; i++){
+		if(Date.now() - timestamps[i] > 60){
+			timestamps.splice(i, 1);
+		}
+	}
+	KV.put(lookupKey, timestamps, 60);
+	if(timestamps.length > perMinute)
+		return true;
+	return false;
+
+}
 const generateRandomString = (length) => {
   let result = '';
   const characters =
@@ -273,7 +308,7 @@ const validUsername = (username) => {
 	return true;
 }
 const correctUsername = (username) => {
-	const res = '';
+	let res = '';
 	if(username.length <= 0){
 		for(let i = 0; i < 15; i++){
 			res += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
