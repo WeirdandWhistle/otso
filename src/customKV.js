@@ -1,16 +1,16 @@
 const KV = new Map();
 const interactionsPerClean = 25;
 let interactionSinceLastClean = 0; 
-export function put(key, value, ttl){
+export function put(key, value, ttlSeconds){
     clean();
-    KV.set(key, {ttl: ttl+Date.now(), data: value});
+    KV.set(key, {ttl: (ttlSeconds*1000)+Date.now(), data: value});
 }
 export function get(key){
     clean();
     const value = KV.get(key);
     if(!value)
         return null;
-    if(value.ttl >= Date.now()){
+    if(value.ttl <= Date.now()){
         KV.delete(key);
         return null;
     }
@@ -25,6 +25,8 @@ export function clean(){
     if(interactionSinceLastClean <= interactionsPerClean){
         return;
     }
+    console.log("cleaning");
+    interactionSinceLastClean = 0;
     const iterator = KV.entries();
     const now = Date.now();
     let value = iterator.next().value;
@@ -32,5 +34,6 @@ export function clean(){
         if(value[1].ttl <= now){
             KV.delete(value[0]);
         }
+        value = iterator.next().value;
     }
 }
