@@ -14,11 +14,11 @@ export async function authorize(request, env, KV){
         return new Response(`{"error":"invalid_request","error_description":"response_type must be present. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
     }
 
-    const OAuthClient = db.getOAuthClientFromClientID(env, client_id);
+    const OAuthClient = await db.getOAuthClientFromClientID(env, client_id);
     if(!OAuthClient)
         return new Response(`{"error":"invalid_request","error_description":"404 Client does not exist. Check your client_id field."}`, {status: 404});
 
-    let user = getUserIfSession(request, env);
+    let user = await getUserIfSession(request, env);
     if(!user){
         // TODO: send to login/signup/authenticaton page
         return new Response("TODO: send to login/signup/authenticaton page");
@@ -65,7 +65,7 @@ export async function authorize(request, env, KV){
         const code = generateSecureChars(42);
         const redirectState = query.get("state");
 
-        KV.put(`OAuthCode.${code}`, {client: client, user: user, redirect_uri: redirect_uri});
+        KV.put(`OAuthCode.${code}`, {client: client, user: user, redirect_uri: redirect_uri, scopes: scopes});
 
         const redirectTo = new URL(redirect_uri);
         redirectTo.searchParams.set("code", code);
@@ -133,14 +133,25 @@ export async function token(request, env, KV){
         return new Response(`{"error":"invalid_request","error_description":"response_type must be present. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
     }
 
-
-
+    const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, stateJson.scopes, 3600);
+    return new Response(JSON.stringify(tokens));
 }
-function issueAccessToken(env, userID, client_id, scopes, ttl){
+async function issueAccessToken(env, userID, client_id, scopes, ttl){
+    const access_token = generateSecureChars(32);
+    const refresh_token = generateSecureChars(64);
+    const expires = Date.now() + ttl;
 
+    await db.createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id);
+
+    return {
+        access_token: access_token,
+        token_type: "Bearer",
+        expires_in: ttl,
+        refresh_token: refresh_token,
+    };
 }
 // if request has valid session then get the user profile ELSE null
-function getUserIfSession(request, env){
+async function getUserIfSession(request, env){
     const cookiesArray = request.header.get("Cookie").split(";");
     let sessionID;
     for(const cookie of cookiesArray){
@@ -155,8 +166,9 @@ function getUserIfSession(request, env){
     return await db.getUserFromUserID(env, userID);
 }
 
+// const validateScopes
 const generateSecureChars = (length) => {
 	const buf = new Uint8Array(length+1);
 	crypto.getRandomValues(buf);
-	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substing(0,length-1);
+	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
 };
