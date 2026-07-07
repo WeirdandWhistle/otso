@@ -14,12 +14,6 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	"kv_namespaces": [
-		{
-			"binding": "OAUTH_STATE",
-			"id": "9d9ddd38723646d09cafc14b061c3720"
-		}
-	],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
