@@ -38,7 +38,7 @@ export async function getUserIDFromSession(env, sessionID) {
                 SELECT userID FROM Sessions WHERE sessionID=? LIMIT 1;
             `)
         .bind(sessionID)
-        .run());
+        .run()).userID;
 }
 export async function createSession(env, sessionID, userID, sessionData) {
     await env.OTSO_DB
