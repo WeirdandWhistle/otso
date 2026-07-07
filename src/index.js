@@ -215,9 +215,9 @@ export default {
 		}
 
 		if(pathname.startsWith("/api/")){
-			if(ratelimit(`${request.headers.get("CF-Connecting-IP")}.${pathname}`, 60))
+			if(ratelimit(KV, `${request.headers.get("CF-Connecting-IP")}`, 60))
 					return new Response("429 Too Many Requets", {status: 429});
-			if(pathname.endsWith("/createAccount")){
+			if(pathname.startsWith("/api/createAccount")){
 				if(request.method != 'POST')
 					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
@@ -264,7 +264,7 @@ export default {
 			} else if(pathname.startsWith("/api/oauth2/token")){
 				return OAuthProvider.token(request, env, KV);
 			}
-		} 
+		}
 
 		return new Response("404 Not Found", {
 			status: 404,
@@ -276,21 +276,25 @@ export default {
 };
 
 // returns true/false. true for being ratelimited, and false when under the limit
-const ratelimit = (key, perMinute) => {
+const ratelimit = (KV, key, perMinute) => {
+	
 	const lookupKey = `Ratelimiter.${key}`;
 	let timestamps = KV.get(lookupKey);
 	if(!timestamps){
 		timestamps = [];
 	}
-	timestamps.push(Date.now());
 	for(let i = 0; i<timestamps.length; i++){
-		if(Date.now() - timestamps[i] > 60){
+		if(Date.now() - timestamps[i] > 60 * 1000){
 			timestamps.splice(i, 1);
 		}
 	}
-	KV.put(lookupKey, timestamps, 60);
-	if(timestamps.length > perMinute)
+	
+	if(timestamps.length + 1 > perMinute){
+		KV.put(lookupKey, timestamps, 60);
 		return true;
+	}
+	timestamps.push(Date.now());
+	KV.put(lookupKey, timestamps, 60);
 	return false;
 
 }
