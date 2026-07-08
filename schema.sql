@@ -5,8 +5,8 @@ DROP TABLE IF EXISTS OAuthClients;
 DROP TABLE IF EXISTS Users;
 CREATE TABLE IF NOT EXISTS Users (
     userID TEXT NOT NULL PRIMARY KEY,
-    authenticationMethods TEXT,
-    authorizedApps TEXT,
+    authenticationMethods TEXT DEFAULT '',
+    authorizedApps TEXT DEFAULT '',
     email TEXT,
     username TEXT NOT NULL
 );
