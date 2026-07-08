@@ -103,7 +103,7 @@
         document.getElementById("providerUsername").value = username;
 
         async function postAccount(){
-            const res = await fetch("/api/createAccount", {
+            const res = await fetch("/api/account/createAccount", {
                 method: 'POST',
                 body: JSON.stringify({
                     username: username,
