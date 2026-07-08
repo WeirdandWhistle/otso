@@ -1,4 +1,5 @@
 import * as db from "./databaseInteraction.js";
+import { getUserIfSession } from "./sessions.js";
 
 // OAuth 2.0 endpoints
 export async function authorize(request, env, KV){
@@ -44,9 +45,14 @@ export async function authorize(request, env, KV){
     }
     if(!verifiyedRedirectURI)
         return new Response(`{"error":"server_error","error_description":"Sorry, the server ran into an unexpected edge case. Please contact an admin"}`,{status:500});
-
     if(!query.get("scope"))
         return new Response(`{"error":"invalid_scope","error_description":"Scope can not be nothing."}`,{status:400});
+
+    try {
+        const testForErrorURL = new URL(redirect_uri);
+    } catch (error) {
+        return new Response(`{"error":"invalid_request","error_description":"redirect_uri is not a valid URL."}`,{status:400});
+    }
 
     const scopes = query.get("scope").split(" ");
     if(scopes.length == 0)
@@ -68,25 +74,24 @@ export async function authorize(request, env, KV){
         }
     }
     if(!isAppAuthorized){
-        // TODO: send authorization page
-        const HTMLPage = await env.ASSETS.fetch(new Request(`${env.HOST}/authorizeApp.html`));
-        // console.log("html page", HTMLPage);
-        const dataToEncode = {
+        const HTMLPage = await env.ASSETS.fetch(new Request(`${env.HOST}/authorizeApp.html`)); // forges a request to get the HTML page from assets
+        const dataToEncode = { // data to be passed to frontend
             appName: OAuthClient.name,
             username: user.username,
+            redirect_uri: redirect_uri,
         };
         let base64Encoded;
         if(1){ // name space shenaigins
+            // encodes dataToEncode into base64 becuase its being passed as a cookie
             const arr = new TextEncoder().encode(JSON.stringify(dataToEncode));
-            base64Encoded = arr.toBase64({alphabet: "base64url", omitPadding: true});
+            base64Encoded = arr.toBase64({alphabet: "base64url", omitPadding: true}); 
         }
 
-        const headers = new Headers(HTMLPage.headers);
-        // console.log("headers",headers);
-        headers.append("Set-Cookie", `authorizeAppData=${base64Encoded}; Expires=${new Date(Date.now() + 5 * 1000).toUTCString()}; Path=/`);
+        const headers = new Headers(HTMLPage.headers); // steals header from the static assets response
+        headers.append("Set-Cookie", `authorizeAppData=${base64Encoded}; Expires=${new Date(Date.now() + 5 * 1000).toUTCString()}; Path=/`); // set a cookie of the base64 encoded data that lasts 5 seconds
 
-        const body = await HTMLPage.text();
-
+        const body = await HTMLPage.text(); // get the html page
+        // bundle everything and send to frontend
         const res = new Response(body, {
             headers: headers,
             status: 200,
@@ -99,7 +104,7 @@ export async function authorize(request, env, KV){
         const code = generateSecureChars(42);
         const redirectState = query.get("state");
 
-        KV.put(`OAuthCode.${code}`, {client: client, user: user, redirect_uri: redirect_uri, scopes: scopes});
+        KV.put(`OAuthCode.${code}`, {client: OAuthClient, user: user, redirect_uri: redirect_uri, scopes: scopes});
 
         const redirectTo = new URL(redirect_uri);
         redirectTo.searchParams.set("code", code);
@@ -184,25 +189,6 @@ async function issueAccessToken(env, userID, client_id, scopes, ttl){
         refresh_token: refresh_token,
     };
 }
-// if request has valid session then get the user profile ELSE null
-async function getUserIfSession(request, env){
-    const cookiesArray = request.headers.get("Cookie").split(";");
-    let sessionID;
-    for(const cookie of cookiesArray){
-        if(cookie.split("=")[0] == "session")
-            sessionID = cookie.split("=")[1];
-    }
-    
-    if(!sessionID)
-        return null;
-    const userID = await db.getUserIDFromSession(env, sessionID);
-    console.log(userID);
-    if(!userID)
-        return null;
-    return await db.getUserFromUserID(env, userID);
-}
-
-// const validateScopes
 const generateSecureChars = (length) => {
 	const buf = new Uint8Array(length+1);
 	crypto.getRandomValues(buf);
