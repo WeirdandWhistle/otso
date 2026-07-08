@@ -32,6 +32,15 @@ export async function createUser(env, userID, username, email, issuer, id, issue
         .bind(id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID)
         .run();
 }
+export async function addAuthorizedApp(env, userID, client_id) {
+    await env.OTSO_DB
+        .prepare(`
+            UPDATE Users SET authorizedApps = authorizedApps || ' ' || ? WHERE userID=?;
+            `)
+        .bind(client_id, userID)
+        .run();
+}
+
 export async function getUserIDFromSession(env, sessionID) {
     return returnResults(await env.OTSO_DB
         .prepare(`
