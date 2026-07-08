@@ -9,6 +9,25 @@ export async function issueSession(env, userID, headers){
 export function getCookie(sessionID){
     return `session=${sessionID}; HttpOnly; Path=/`;
 }
+// if request has valid session then get the user profile ELSE null
+export async function getUserIfSession(request, env){
+    const cookiesArray = request.headers.get("Cookie") ? request.headers.get("Cookie").split(";") : null;
+    if(!cookiesArray)
+        return null;
+    let sessionID;
+    for(const cookie of cookiesArray){
+        if(cookie.split("=")[0] == "session")
+            sessionID = cookie.split("=")[1];
+    }
+    
+    if(!sessionID)
+        return null;
+    const userID = await db.getUserIDFromSession(env, sessionID);
+    console.log(userID);
+    if(!userID)
+        return null;
+    return await db.getUserFromUserID(env, userID);
+}
 
 const generateSecureChars = (length) => {
 	const buf = new Uint8Array(length+1);
