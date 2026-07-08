@@ -217,7 +217,7 @@ export default {
 		if(pathname.startsWith("/api/")){
 			if(ratelimit(KV, `${request.headers.get("CF-Connecting-IP")}`, 60))
 					return new Response("429 Too Many Requets", {status: 429});
-			if(pathname.startsWith("/api/createAccount")){
+			if(pathname.startsWith("/api/account/createAccount")){
 				if(request.method != 'POST')
 					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
@@ -263,6 +263,20 @@ export default {
 				return OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
 				return OAuthProvider.token(request, env, KV);
+			} else if(pathname.startsWith("/api/account/authorizeApp")){
+				if(request.method != 'POST')
+					return new Response("405 Method Not Allowed. Try using 'POST'", {status:405});
+				const user = await session.getUserIfSession(request, env);
+				if(!user)
+					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
+				const requestJson = await request.json();
+				if(!requestJson.client_id)
+					return new Response("400 Bad Request. This enpoint requires a 'client_id' in the JSON.", {status: 400});
+				const client = await db.getOAuthClientFromClientID(env, requestJson.client_id);
+				if(!client)
+					return new Response("400 Bad Request. Client does not exist.",{status: 400});
+				await db.addAuthorizedApp(env, user.userID, client.client_id);
+				return new Response(`{"ok":true,"message":"App has been Authorized."}`);				
 			}
 		}
 
