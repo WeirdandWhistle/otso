@@ -90,8 +90,8 @@
 
     </div>
     <script>
+        // gets cookie called 'authorizeAppData'
         const cookieArray = document.cookie.split(";");
-        
         let authorizeAppData;
         for(const cookie of cookieArray){
             const arr = cookie.split("=");
@@ -100,9 +100,8 @@
                 break;
             }
         }
-        console.log(authorizeAppData);
-        const buffer = Uint8Array.fromBase64(authorizeAppData, {alphabet: "base64url"});
-        const data = JSON.parse(new TextDecoder().decode(buffer.buffer));
+        const buffer = Uint8Array.fromBase64(authorizeAppData, {alphabet: "base64url"}); // creates a buffer by decoding from base64
+        const data = JSON.parse(new TextDecoder().decode(buffer.buffer)); // turn Uint8Array into text and then pase the json
         const username = data.username;
         
         document.getElementById("header").innerText = data.appName;
@@ -121,10 +120,25 @@
         }
 
         function cancel() {
-            const redirect_uri = new URL(window.location).searchParams.get("redirect_uri");
+            const redirect_uri = new URL(data.redirect_uri);
             const params = new URLSearchParams();
             params.set("error","request_denied");
-            params.set("error_description","The user has denied the access.");
+            params.set("error_description","The user has denied access.");
+            redirect_uri.search = params.toString();
+            window.location = redirect_uri.toString();
+        }
+        async function authApp(){
+            const client_id = new URL(window.location).searchParams.get("client_id");
+            const res = await fetch("/api/account/authorizeApp", {
+                method: 'POST',
+                body: JSON.stringify({
+                    client_id: client_id,
+                }),
+            });
+            if(res.ok)
+                location.reload();
+            else
+                alert("Sorry we ran into a problem. Please try again later.");
         }
 
         function textForScope(scope){
