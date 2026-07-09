@@ -27,7 +27,7 @@ export default {
 			const query = new URLSearchParams();
 			const response_type = "code"; query.set("response_type", response_type);
 			query.set("redirect_uri", redirect_uri);
-			let state = query.get("state");
+			let state = new URL(request.url).searchParams.get("state");
 			if(!state)
 				state = generateRandomString(32);
 			query.set("state", state);
@@ -65,6 +65,7 @@ export default {
 			let stateJson = KV.get(`state.${state}`);
 			if(!stateJson)
 				stateJson = {};
+			console.log("oauth/state", stateJson);
 			stateJson.auth = provider;
 			KV.put(`state.${state}`, stateJson, 60);
 			query.set("client_id", client_id);
@@ -94,12 +95,12 @@ export default {
 			let OAuthState = KV.get(`state.${state}`);
 			if(!OAuthState)
 				return new Response("Invalid State", {status: 400});
-			
+
 			const body = new URLSearchParams();
 			body.set("grant_type", grant_type);
 			body.set("code", code);
 			body.set("redirect_uri", redirect_uri);
-			
+
 			let endpoint;
 
 			if(OAuthState.auth == "github"){
@@ -123,7 +124,7 @@ export default {
 				body.set("client_secret", env.TWITCH_CLIENT_SECRET);
 				endpoint = twitchTokenEndpoint;
 			}
-			
+
 			const res = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
@@ -153,7 +154,7 @@ export default {
 			}
 
 			let issuerInfo; // {username, id, email, issuer}
-			
+
 			if(OAuthState.auth == "github"){
 				issuerInfo = await getGithubUser(tokens.access_token);
 				issuerInfo.email = await getGithubUserEmail(tokens.access_token);
@@ -174,7 +175,7 @@ export default {
 			const user = await db.getUserFromIssuer(env, issuerInfo.id, issuerInfo.issuer);
 			console.log("after authed: user from db, ", user);
 			if(!user){
-				
+
 				OAuthState.issuerInfo = issuerInfo;
 				KV.put(`state.${state}`, OAuthState, 60);
 
@@ -221,7 +222,7 @@ export default {
 				if(request.method != 'POST')
 					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
-				const state = postJson.state; 
+				const state = postJson.state;
 
 				const OAuthState = KV.get(`state.${state}`);
 				if(!OAuthState)
@@ -243,21 +244,21 @@ export default {
 
 				const userID = generateUserID();
 				db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
-				
+
 				const headers = new Headers();
 
 				const sessionID = await session.issueSession(env, userID, request.headers);
-				const sessionCookie = session.getCookie(sessionID);			
+				const sessionCookie = session.getCookie(sessionID);
 				headers.append("Set-Cookie", sessionCookie);
-				headers.append("Content-Type","application/json");	
+				headers.append("Content-Type","application/json");
+				console.log('oauthstae',OAuthState);
 
-				return new Response("", {
-					status: 200,
-					headers: headers,
-					body: JSON.stringify({
+				return new Response(JSON.stringify({
 						ok: true,
 						redirect_uri: OAuthState.redirect_from,
-					}),
+					}), {
+					status: 200,
+					headers: headers,
 				});
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
 				return OAuthProvider.authorize(request, env, KV);
@@ -276,7 +277,7 @@ export default {
 				if(!client)
 					return new Response("400 Bad Request. Client does not exist.",{status: 400});
 				await db.addAuthorizedApp(env, user.userID, client.client_id);
-				return new Response(`{"ok":true,"message":"App has been Authorized."}`);				
+				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
 			}
 		}
 
@@ -286,12 +287,12 @@ export default {
 				'Content-Type' : 'text',
 			}
 		});
-	}		
+	}
 };
 
 // returns true/false. true for being ratelimited, and false when under the limit
 const ratelimit = (KV, key, perMinute) => {
-	
+
 	const lookupKey = `Ratelimiter.${key}`;
 	let timestamps = KV.get(lookupKey);
 	if(!timestamps){
@@ -302,7 +303,7 @@ const ratelimit = (KV, key, perMinute) => {
 			timestamps.splice(i, 1);
 		}
 	}
-	
+
 	if(timestamps.length + 1 > perMinute){
 		KV.put(lookupKey, timestamps, 60);
 		return true;
@@ -349,7 +350,7 @@ const correctUsername = (username) => {
 	} else if(username.length > usernameMaxLength){
 		username = username.sub(0, usernameMaxLength-1);
 	}
-	
+
 	for(let i = 0; i<username.length;i++){
 		if(allowedChars.includes(username.charAt(i))){
 			res += username.charAt(i);

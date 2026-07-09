@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS OAuthClients (
     ownerUserID TEXT NOT NULL,
     FOREIGN KEY (ownerUserID) REFERENCES Users(userID)
 );
-INSERT INTO OAuthClients (ownerUserID, client_id, client_type, name) VALUES ('userid', 'client_id', 'public', 'app');
+INSERT INTO OAuthClients (ownerUserID, client_id, client_type, name, redirection_URIs) VALUES ('userid', 'client_id', 'public', 'app', 'https://github.com');
 
 DROP TABLE IF EXISTS OAuthTokens;
 CREATE TABLE IF NOT EXISTS OAuthTokens (

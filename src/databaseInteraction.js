@@ -8,7 +8,7 @@ export async function getUserFromIssuer(env, id, issuer) {
     return returnResults(await env.OTSO_DB
         .prepare("SELECT * FROM users WHERE userID=(SELECT userID FROM OAuthIssuers WHERE id=? AND issuer=? LIMIT 1) LIMIT 1;")
         .bind(id, issuer)
-        .run());    
+        .run());
 }
 export async function getUserFromUserID(env, userID) {
     return returnResults(await env.OTSO_DB
@@ -26,7 +26,7 @@ export async function createUser(env, userID, username, email, issuer, id, issue
         .run();
     await env.OTSO_DB
         .prepare(`
-            INSERT INTO OAuthIssuers (ID, issuer, username, email, access_token, refresh_token, userID) 
+            INSERT INTO OAuthIssuers (ID, issuer, username, email, access_token, refresh_token, userID)
                 VALUES (?, ?, ?, ?, ?, ?, ?);
             `)
         .bind(id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID)
@@ -42,12 +42,15 @@ export async function addAuthorizedApp(env, userID, client_id) {
 }
 
 export async function getUserIDFromSession(env, sessionID) {
-    return returnResults(await env.OTSO_DB
+    const temp = returnResults(await env.OTSO_DB
         .prepare(`
                 SELECT userID FROM Sessions WHERE sessionID=? LIMIT 1;
             `)
         .bind(sessionID)
-        .run()).userID;
+        .run());
+		if(!temp)
+			return null;
+		return temp.userID;
 }
 export async function createSession(env, sessionID, userID, sessionData) {
     await env.OTSO_DB

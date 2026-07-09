@@ -23,22 +23,23 @@ export async function authorize(request, env, KV){
     let redirect_uri = query.get("redirect_uri");
     let verifiyedRedirectURI = false;
     const redirectionURIs = OAuthClient.redirection_URIs ? OAuthClient.redirection_URIs.split(" ") : null;
-    console.log(redirect_uri);
+    console.log("redirectionURIs",redirectionURIs);
     if(redirectionURIs || redirect_uri){
         if(!redirectionURIs && redirect_uri){
             verifiyedRedirectURI = true;
         } else if(redirectionURIs.length == 1){
-            if(!redirect_uri)
+            if(redirect_uri && redirect_uri != redirectionURIs)
                 return new Response(`{"error":"invalid_request","error_description":"redirect_uri is incorrect. Must have one valid redirect_uri. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
             verifiyedRedirectURI = true;
             redirect_uri = redirectionURIs[0];
         } else if(!verifiyedRedirectURI && redirectionURIs.length > 1){
             for(const uri of redirectionURIs){
                 if(uri == redirect_uri){
-                    verifiyedRedirectURI;
+                    verifiyedRedirectURI = true;
                     break;
                 }
             }
+        return new Response(`{"error":"invalid_request","error_description":"redirect_uri does not equal any registered URI."}`,{status:400});
         }
     } else {
         return new Response(`{"error":"invalid_request","error_description":"A redirection must be registered OR provided."}`,{status:400});
@@ -61,8 +62,21 @@ export async function authorize(request, env, KV){
     let user = await getUserIfSession(request, env);
     if(!user){
         // TODO: send to login/signup/authenticaton page
-        return new Response("TODO: send to login/signup/authenticaton page");
+		    const state = generateSecureChars(32);
+				const stateJson = {
+					redirect_from: request.url,
+				};
+			  KV.put(`state.${state}`, stateJson, 60);
+
+
+			return new Response("You are currently being redirected to /login.", {
+				status: 302,
+				headers:{
+					'Location':`/login?state=${state}`
+				}
+			});
     }
+
     const authorizedApps = user.authorizedApps ? user.authorizedApps.split(" ") : null;
     let isAppAuthorized = false;
     if(authorizedApps){
@@ -84,7 +98,7 @@ export async function authorize(request, env, KV){
         if(1){ // name space shenaigins
             // encodes dataToEncode into base64 becuase its being passed as a cookie
             const arr = new TextEncoder().encode(JSON.stringify(dataToEncode));
-            base64Encoded = arr.toBase64({alphabet: "base64url", omitPadding: true}); 
+            base64Encoded = arr.toBase64({alphabet: "base64url", omitPadding: true});
         }
 
         const headers = new Headers(HTMLPage.headers); // steals header from the static assets response
