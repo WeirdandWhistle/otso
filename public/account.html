@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Otso Account Page</title>
+	<style>
+
+        :root{
+            --login-with-width: 200px;
+            --color: rgb(220, 220, 220);
+            --background-color: #1c1b22;
+        }
+
+        body{
+            background-color: var(--background-color);
+            color: var(--color);
+        }
+		.nav-bar-button{
+			width: 2rem;
+			aspect-ratio: 1/1;
+			border: 1px var(--color) solid;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: absolute;
+			top: 0;
+			left: 0;
+			font-size: 25px;
+		}
+		.nav-bar{
+			position: absolute;
+			width: 0;
+			height: 100%;
+			top: 0;
+			left: 0;
+			background-color: var(--background-color);
+			overflow-y: hidden;
+			transition: 0.3s;
+		}
+		.nav-bar a{
+			padding: 8px 8px 8px 16px;
+			text-decoration: none;
+			font-size: 25px;
+			color: var(--color);
+			display: block;
+			transition: 0.3s;
+		}
+
+    </style>
+
+</head>
+<body>
+	<div class="nav-bar-button" onclick="openNav()">
+		&#8801;
+	</div>
+	<div class="nav-bar" id="navBar">
+		<a href="#" onclick="closeNav()">&times;</a>
+		<a href="#">Login Methods</a>
+		<a href="#">Clients</a>
+	</div>
+
+	<script>
+	const navBar = document.getElementById("navBar");
+	function openNav(){
+			navBar.style.width = "300px";
+		navBar.style.border = "1px var(--color) solid";
+	}
+	function closeNav(){
+		navBar.style.width = "0";
+		setTimeout(()=>{
+			navBar.style.border = "";
+		}, 300);
+	}
+</script>
+
+</body>
+</html>
