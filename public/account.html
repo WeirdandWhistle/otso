@@ -6,16 +6,28 @@
 	<title>Otso Account Page</title>
 	<style>
 
-        :root{
-            --login-with-width: 200px;
-            --color: rgb(220, 220, 220);
-            --background-color: #1c1b22;
-        }
+		:root{
+				--login-with-width: 200px;
+				--color: rgb(220, 220, 220);
+				--background-color: #1c1b22;
+		}
 
-        body{
-            background-color: var(--background-color);
-            color: var(--color);
-        }
+		body{
+				background-color: var(--background-color);
+				color: var(--color);
+		}
+		pre{
+			display: inline;
+		}
+		input{
+			color: var(--color);
+			border: none;
+			outline: none;
+			background-color: #2c2b32;
+			padding-left: 0.3rem;
+			padding-right: 0.3rem;
+			min-width: 15.5rem;
+		}
 		.nav-bar-button{
 			width: 2rem;
 			aspect-ratio: 1/1;
@@ -24,20 +36,21 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			position: absolute;
+			position: fixed;
 			top: 0;
 			left: 0;
 			font-size: 25px;
 		}
 		.nav-bar{
-			position: absolute;
+			position: fixed;
 			width: 0;
-			height: 100%;
+			height: 99vh;
 			top: 0;
 			left: 0;
 			background-color: var(--background-color);
 			overflow-y: hidden;
 			transition: 0.3s;
+			z-index: 100;
 		}
 		.nav-bar a{
 			padding: 8px 8px 8px 16px;
@@ -45,7 +58,69 @@
 			font-size: 25px;
 			color: var(--color);
 			display: block;
+			cursor: pointer;
 			transition: 0.3s;
+		}
+		main{
+			width: 80%;
+			display: flex;
+			flex-direction: column;
+			position: absolute;
+			top: 0;
+			left:10%;
+			border: 1px var(--color) solid;
+			padding: 0.25rem;
+		}
+		a{
+			text-decoration: none;
+			font-weight: bold;
+			color: var(--color);
+		}
+		card{
+			background-color: var(--background-color);
+			color: var(--color);
+			border: 1px var(--color) solid;
+			padding: 0.25rem;
+			width: 95%;
+			min-height: 5rem;
+			display: block;
+		}
+		button{
+			border: 1px var(--color) solid;
+			outline: none;
+			font-size: 1rem;
+			/* border-radius: 2rem; */
+			background-color: #2c2b32;
+			color: var(--color);
+			padding: 0.25rem;
+			cursor: pointer;
+			transition: 0.2s;
+			width: 10rem;
+		}
+		button:hover{
+				background-color: #36353e;
+				transform: scale(1.05);
+				box-shadow: 5px 5px 5px black;
+		}
+		.modal{
+			display: none;
+			position: fixed;
+			z-index: 1;
+			left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color:#00000088;
+		}
+		.modal-content{
+			background-color: var(--background-color);
+			margin: 15% auto;
+			padding: 20px;
+			border: 1px var(--color) solid;
+			width: 80%;
+		}
+		.close-modal{
+			color: var(--color);
+			float: right;
+			font-weight: bold;
+			font-size: 2rem;
+			cursor: pointer;
 		}
 
     </style>
@@ -56,10 +131,70 @@
 		&#8801;
 	</div>
 	<div class="nav-bar" id="navBar">
-		<a href="#" onclick="closeNav()">&times;</a>
-		<a href="#">Login Methods</a>
-		<a href="#">Clients</a>
+		<a onclick="closeNav()">&times;</a>
+		<a href="#account-details">Account Details</a>
+		<a href="#login-methods">Login Methods</a>
+		<a href="#authorized-apps">Authorized Apps</a>
+		<a href="#clients">My OAuth Clients</a>
 	</div>
+
+	<main>
+		<div>
+			<a id="account-details" href="#account-details">Account Details</a><br>
+				<pre>Username:</pre><input id="username"><br>
+				<pre>User ID :</pre><input id="userid"><br>
+				<pre>Email   :</pre><input id="email">
+				<pre>Verifyed:</pre><input value="false"><br>
+
+		</div>
+		<div>
+			<a id="login-methods" href="#login-methods">Login Methods</a><br>
+			You can login with <b>3</b> different Methods. <br>
+			<ul>
+				<li>Google</li>
+				<li>Github</li>
+				<li>Twitch</li>
+			</ul>
+		</div>
+		<div>
+			<a id="authorized-apps" href="#authorized-apps">Authorized Apps</a><br>
+			You have authrozied <b>1</b> app.<br>
+			<ul>
+				<li>Puke-Mail</li>
+			</ul>
+		</div>
+		<div>
+			<a id="clients" href="#clients">OAuth Clients</a><br>
+			These are your OAuth Client details:<br>
+			<div style="display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 0.25rem;">
+				<card>
+					<b>Puke-Mail</b><br>
+					<pre>Name        :</pre><input><br>
+					<pre>Client ID   :</pre><input><br>
+					<pre>Redirect URI:</pre><input><br>
+					<pre>Client Type :</pre>
+					<div style="display: inline;">
+						<input type="radio" name="clientType" style="min-width: auto;"> <label>Confidential</label>
+						<input type="radio" name="clientType" style="min-width: auto;"> <label>Public</label>
+					</div><br>
+					<div>
+						<button>Cancel</button>
+						<button>Save</button>
+						<button>Delete</button>
+					</div>
+				</card>
+				<button id="createClient" style="width: 95%;">Create New Client</button>
+				<div id="createClientModal" class="modal">
+					<div id="createClientContent" class="modal-content">
+						<span id="closeClientModal" class="close-modal">&times;</span>
+						<h1>Hi</h1>
+					</div>
+				</div>
+			</div>
+
+			</div>
+		</div>
+	</main>
 
 	<script>
 	const navBar = document.getElementById("navBar");
@@ -73,6 +208,22 @@
 			navBar.style.border = "";
 		}, 300);
 	}
+
+	const createClientButton = document.getElementById("createClient");
+	const createClientModal = document.getElementById("createClientModal");
+	const closeClientButton = document.getElementById("closeClientModal");
+	function closeClientModal(){
+		createClientModal.style.display = 'none';
+	}
+	function openClientModal(){
+		createClientModal.style.display = 'block';
+	}
+	createClientButton.onclick = openClientModal;
+	closeClientButton.onclick = closeClientModal;
+	window.onclick = (event)=>{
+		if(event.target == createClientModal)
+			closeClientModal();
+	};
 </script>
 
 </body>
