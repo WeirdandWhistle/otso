@@ -17,19 +17,25 @@ export async function getUserFromUserID(env, userID) {
         .run());
 }
 export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
+	if(!issuer)
+		throw new Error("issuer is null");
+	if(!userID)
+		throw new Error("userID is null");
+	if(!id)
+		throw new Error("issuer id is null");
     await env.OTSO_DB
         .prepare(`
             INSERT INTO Users (userID, authenticationMethods, email, username)
                 VALUES (?, ?, ?, ?);
             `)
-        .bind(userID, issuer, email, username) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
+        .bind(userID, issuer, email ?? null, username ?? null) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
         .run();
     await env.OTSO_DB
         .prepare(`
             INSERT INTO OAuthIssuers (ID, issuer, username, email, access_token, refresh_token, userID)
                 VALUES (?, ?, ?, ?, ?, ?, ?);
             `)
-        .bind(id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID)
+        .bind(id, issuer, issuerUsername ?? null, issuerEmail ?? null, access_token ?? null, refresh_token ?? null, userID)
         .run();
 }
 export async function addAuthorizedApp(env, userID, client_id) {

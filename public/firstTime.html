@@ -115,6 +115,7 @@
                 throw new Error(res);
             }
             const json = await res.json();
+						console.log(json);
 						window.location = json.redirect_uri;
 
         }

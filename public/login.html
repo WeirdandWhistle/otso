@@ -100,15 +100,16 @@
 
     <script>
         const query = new URL(window.location).searchParams;
-        const state = query.get("state");
-        if(state){
+				const addTo = query.toString();
+				console.log(addTo);
+        if(addTo){
             for(let array = document.querySelectorAll("a"), i = 0; i<array.length; i++){
                 console.log(array[i]);
                 const linkTo = array[i].attributes.href.nodeValue;
                 if(!linkTo.startsWith("/oauth/")){
                     continue;
                 }
-                array[i].attributes.href.nodeValue += `?state=${state}`;
+                array[i].attributes.href.nodeValue +='?' + addTo;
             }
         }
     </script>

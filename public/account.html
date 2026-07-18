@@ -252,7 +252,13 @@
 			}
 		});
 		if(!res.ok){
+			if(res.status == 401){
+				const temp = new URLSearchParams();
+				temp.set("redirect_from",window.location);
+				window.location = new URL(window.location).origin + `/login?${temp.toString()}`;
+			}
 			alert("We're sorry, but the server is not working right now. Please try again soon.");
+			console.log("error: ", await res.text());
 			return;
 		}
 		const userInfo = await res.json();

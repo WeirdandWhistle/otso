@@ -27,7 +27,9 @@ export default {
 			const query = new URLSearchParams();
 			const response_type = "code"; query.set("response_type", response_type);
 			query.set("redirect_uri", redirect_uri);
-			let state = new URL(request.url).searchParams.get("state");
+			const urlQuery = new URL(request.url).searchParams;
+			let state = urlQuery.get("state");
+			const redirect_from = urlQuery.get("redirect_from");
 			if(!state)
 				state = generateRandomString(32);
 			query.set("state", state);
@@ -65,6 +67,8 @@ export default {
 			let stateJson = KV.get(`state.${state}`);
 			if(!stateJson)
 				stateJson = {};
+			if(redirect_from && !stateJson.redirect_from)
+				stateJson.redirect_from = redirect_from;
 			console.log("oauth/state", stateJson);
 			stateJson.auth = provider;
 			KV.put(`state.${state}`, stateJson, 60);
@@ -243,7 +247,7 @@ export default {
 				const refresh_token = OAuthState.issuerInfo.refresh_token;
 
 				const userID = generateUserID();
-				db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
+				await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
 
 				const headers = new Headers();
 
@@ -251,7 +255,7 @@ export default {
 				const sessionCookie = session.getCookie(sessionID);
 				headers.append("Set-Cookie", sessionCookie);
 				headers.append("Content-Type","application/json");
-				//console.log('oauthstae',OAuthState);
+				console.log('oauthstae',OAuthState);
 
 				return new Response(JSON.stringify({
 						ok: true,
