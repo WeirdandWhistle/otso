@@ -256,6 +256,7 @@
 			return;
 		}
 		const userInfo = await res.json();
+		console.log("userinfo",userInfo);
 		document.getElementById("username").value = userInfo.username;
 		document.getElementById("email").value = userInfo.email;
 		document.getElementById("userID").value = userInfo.userID;
@@ -308,12 +309,15 @@
 			document.getElementById(`change-client_id-${i}`).value = json.client_id;
 			document.getElementById(`change-redirect_uri-${i}`).value = json.redirect_uri[0];
 			document.getElementById(`change-type-confidential-${i}`).checked = json.client_type == 'confidential' ? true : false;
-			document.getElementById(`change-type-public-${i}`).checked = json.client_id == 'public' ? true : false;
+			document.getElementById(`change-type-public-${i}`).checked = json.client_type == 'public' ? true : false;
 		}
 
 
 	}
 	async function createClient(){
+
+		document.body.style.cursor = 'wait';
+
 		const name = document.getElementById("create-name").value;
 		const redirect_uri = document.getElementById("create-redirect_uri").value;
 		const typePublic = document.getElementById("create-type-public").checked;
@@ -324,9 +328,14 @@
 		const client_secret = document.getElementById("create-client_secret");
 		const type = typePublic ? 'public' : 'confidential';
 
+		err.style.display = 'none';
+
 		const showError = (text) => {
-			err.style.display = 'flex';
-			err.innerText = text;
+			setTimeout(()=>{
+				err.style.display = 'flex';
+				err.innerText = text;
+				document.body.style.cursor = 'default';
+			}, 250);
 		}
 
 		try {
