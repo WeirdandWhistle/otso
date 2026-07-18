@@ -121,6 +121,10 @@
 			font-weight: bold;
 			font-size: 2rem;
 			cursor: pointer;
+			transition: 0.3s;
+		}
+		.close-modal:hover{
+			transform: rotate(-90deg);
 		}
 
     </style>
@@ -142,25 +146,22 @@
 		<div>
 			<a id="account-details" href="#account-details">Account Details</a><br>
 				<pre>Username:</pre><input id="username"><br>
-				<pre>User ID :</pre><input id="userid"><br>
+				<pre>User ID :</pre><input id="userID"><br>
 				<pre>Email   :</pre><input id="email">
 				<pre>Verifyed:</pre><input value="false"><br>
 
 		</div>
 		<div>
 			<a id="login-methods" href="#login-methods">Login Methods</a><br>
-			You can login with <b>3</b> different Methods. <br>
-			<ul>
-				<li>Google</li>
-				<li>Github</li>
-				<li>Twitch</li>
+			You can login with <b id="login-methods-count"></b> different Methods. <br>
+			<ul id="login-methods-list">
 			</ul>
 		</div>
 		<div>
 			<a id="authorized-apps" href="#authorized-apps">Authorized Apps</a><br>
-			You have authrozied <b>1</b> app.<br>
-			<ul>
-				<li>Puke-Mail</li>
+			You have authrozied <b id="authorized-apps-count"></b> app.<br>
+			<ul id="authorized-apps-list">
+				<li>Puke-Mail&#9;<button onclick="revokeClient('client_id')">Revoke</button></li>
 			</ul>
 		</div>
 		<div>
@@ -168,11 +169,12 @@
 			These are your OAuth Client details:<br>
 			<div style="display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 0.25rem;">
 				<card>
-					<b>Puke-Mail</b><br>
-					<pre>Name        :</pre><input><br>
-					<pre>Client ID   :</pre><input><br>
-					<pre>Redirect URI:</pre><input><br>
-					<pre>Client Type :</pre>
+					<a href="#Puke-Mail">Puke-Mail</a><br>
+					<pre>Name         :</pre><input><br>
+					<pre>Client ID    :</pre><input><br>
+					<pre>Redirect URI :</pre><input><br>
+					<pre>Client Secret:</pre><button style="min-width: 16rem;">Create/Reset</button><br>
+					<pre>Client Type  :</pre>
 					<div style="display: inline;">
 						<input type="radio" name="clientType" style="min-width: auto;"> <label>Confidential</label>
 						<input type="radio" name="clientType" style="min-width: auto;"> <label>Public</label>
@@ -187,7 +189,15 @@
 				<div id="createClientModal" class="modal">
 					<div id="createClientContent" class="modal-content">
 						<span id="closeClientModal" class="close-modal">&times;</span>
-						<h1>Hi</h1>
+						<h1>Create A New OAuth Client</h1>
+						<pre>App Name    :</pre><input><br>
+						<pre>Redirect URI:</pre><input type="url"><br>
+						<pre>Client Type :</pre>
+						<div style="display: inline;">
+							<input type="radio" name="clientTypeModal" style="min-width: auto;"> <label>Confidential</label>
+							<input type="radio" name="clientTypeModal" style="min-width: auto;"> <label>Public</label>
+						</div><br>
+						<div style="width: 100%; display: flex; justify-content: center; align-items: center;"><button style="font-size: 1.25rem;">Create</button></div>
 					</div>
 				</div>
 			</div>
@@ -224,6 +234,51 @@
 		if(event.target == createClientModal)
 			closeClientModal();
 	};
+
+	async function init(){
+		const res = await fetch("/api/account/info",{
+			method: 'GET',
+			headers: {
+				'Authorization' : 'Session'
+			}
+		});
+		if(!res.ok){
+			alert("We're sorry, but the server is not working right now. Please try again soon.");
+			return;
+		}
+		const userInfo = await res.json();
+		document.getElementById("username").value = userInfo.username;
+		document.getElementById("email").value = userInfo.email;
+		document.getElementById("userID").value = userInfo.userID;
+
+		document.getElementById("login-methods-count").innerText = userInfo.loginMethods.length;
+		const loginList = document.getElementById("login-methods-list");
+		for(let i in userInfo.loginMethods){
+			const key = `login-methods-element-${i}`;
+			const text = capitalizeFirstLetter(userInfo.loginMethods[i]);
+			loginList.insertAdjacentHTML("beforeend",`<li id="${key}"></li>`);
+			document.getElementById(key).innerText = text;
+		}
+
+		document.getElementById("authorized-apps-count").innerText = userInfo.authorizedApps.length;
+		const authList = document.getElementById("authorized-apps-list");
+		for(let i in userInfo.loginMethods){
+			const key = `authorized-apps-element-${i}`;
+			const text = capitalizeFirstLetter(userInfo.authorizedApps[i].name);
+			authList.insertAdjacentHTML("beforeend",`<li><span id="${key}"><span><button onclick="revokeClient('${userInfo.authorizedApps[i].client_id}')">Revoke</button></li>`);
+			document.getElementById(key).innerText = text;
+		}
+
+
+	}
+	init();
+
+
+	// Source - https://stackoverflow.com/a/1026087
+	function capitalizeFirstLetter(val) {
+		return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+	}
+
 </script>
 
 </body>

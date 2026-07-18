@@ -72,6 +72,21 @@ export async function getOAuthClientFromClientID(env, client_id) {
         .run()
     );
 }
+export async function getOAuthClientsFromUserID(env, userID){
+	const raw = await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM OAuthClients WHERE ownerUserID=?;
+			`)
+		.bind(userID)
+		.run();
+	if(!raw)
+		return null;
+	const results = raw.results;
+	if(results.length <= 0)
+		return null;
+	return results;
+
+}
 // OAuthTokens
 export async function createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id) {
     await env.OTSO_DB

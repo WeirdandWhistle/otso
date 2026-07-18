@@ -251,7 +251,7 @@ export default {
 				const sessionCookie = session.getCookie(sessionID);
 				headers.append("Set-Cookie", sessionCookie);
 				headers.append("Content-Type","application/json");
-				console.log('oauthstae',OAuthState);
+				//console.log('oauthstae',OAuthState);
 
 				return new Response(JSON.stringify({
 						ok: true,
@@ -260,6 +260,52 @@ export default {
 					status: 200,
 					headers: headers,
 				});
+			} else if(pathname.startsWith("/api/account/info")){
+				if(request.method != 'GET')
+					return new Response("405 Method Not Allowed. Try using the 'GET' method.",{status: 405});
+				const authHeader = request.headers.get("Authorization");
+				const authType = authHeader.split(" ")[0].toLowerCase();
+				if(authType == "session"){
+					const user = await session.getUserIfSession(request, env);
+					if(!user)
+						return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
+					const out = {};
+					out.username = user.username;
+					out.userID = user.userID;
+					out.email = user.email;
+					out.loginMethods = user.authenticationMethods.split(" ");
+					out.authorizedApps = [];
+
+					const clientIDArray = user.authorizedApps.split(" ");
+					for(let client_id of clientIDArray){
+						const client = await db.getOAuthClientFromClientID(env, client_id);
+						if(!client){
+							console.log("client_id",client_id,"is null");
+							continue;
+						}
+						out.authorizedApps.push({
+							name: client.name,
+							client_id: client.client_id,
+						});
+					}
+					out.ownedClients = [];
+					const ownedClients = await db.getOAuthClientFromClientID(env, user.userID);
+					if(ownedClients){
+						for(const client of ownedClients){
+							out.ownedClients.push({
+								name: client.name,
+								client_id: client.client_id,
+								redirect_uri: client.redirection_URIs.split(" "),
+								client_type: client.client_type,
+							});
+						}
+					}
+					return new Response(JSON.stringify(out));
+				} else if(authType == "bearer"){
+
+				} else {
+					return new Response("401 Unauthorized. Unknown auth-scheme. Try 'Bearer' or 'Session'.", {status: 401});
+				}
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
 				return OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
