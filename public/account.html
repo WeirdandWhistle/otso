@@ -28,6 +28,9 @@
 			padding-right: 0.3rem;
 			min-width: 15.5rem;
 		}
+		input:disabled{
+			cursor: not-allowed;
+		}
 		.nav-bar-button{
 			width: 2rem;
 			aspect-ratio: 1/1;
@@ -167,37 +170,43 @@
 		<div>
 			<a id="clients" href="#clients">OAuth Clients</a><br>
 			These are your OAuth Client details:<br>
-			<div style="display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 0.25rem;">
+			<div id="owned-clients" style="display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 0.25rem;">
+				<!--
 				<card>
 					<a href="#Puke-Mail">Puke-Mail</a><br>
-					<pre>Name         :</pre><input><br>
-					<pre>Client ID    :</pre><input><br>
-					<pre>Redirect URI :</pre><input><br>
-					<pre>Client Secret:</pre><button style="min-width: 16rem;">Create/Reset</button><br>
+					<pre>Name         :</pre><input id=""><br>
+					<pre>Client ID    :</pre><input id=""><br>
+					<pre>Redirect URI :</pre><input id=""><br>
+					<pre>Client Secret:</pre><button onclick="resetClientSecret(0)" style="min-width: 16rem;">Create/Reset</button><br>
 					<pre>Client Type  :</pre>
 					<div style="display: inline;">
-						<input type="radio" name="clientType" style="min-width: auto;"> <label>Confidential</label>
-						<input type="radio" name="clientType" style="min-width: auto;"> <label>Public</label>
+						<input id="change-0-confidential" type="radio" name="clientType" style="min-width: auto;"> <label>Confidential</label>
+						<input id="change-0-public" type="radio" name="clientType" style="min-width: auto;"> <label>Public</label>
 					</div><br>
 					<div>
-						<button>Cancel</button>
-						<button>Save</button>
-						<button>Delete</button>
+						<button onclick="cancelChange(0)">Cancel</button>
+						<button onclick="saveChange(0)">Save</button>
+						<button onclick="deleteClient(0)">Delete</button>
 					</div>
-				</card>
+				</card> -->
 				<button id="createClient" style="width: 95%;">Create New Client</button>
 				<div id="createClientModal" class="modal">
 					<div id="createClientContent" class="modal-content">
 						<span id="closeClientModal" class="close-modal">&times;</span>
 						<h1>Create A New OAuth Client</h1>
-						<pre>App Name    :</pre><input><br>
-						<pre>Redirect URI:</pre><input type="url"><br>
-						<pre>Client Type :</pre>
+						<pre>App Name     :</pre><input id="create-name"><br>
+						<pre>Redirect URI :</pre><input id="create-redirect_uri" type="url"><br>
+						<pre>Client Type  :</pre>
 						<div style="display: inline;">
-							<input type="radio" name="clientTypeModal" style="min-width: auto;"> <label>Confidential</label>
-							<input type="radio" name="clientTypeModal" style="min-width: auto;"> <label>Public</label>
+							<input type="radio" name="clientTypeModal" style="min-width: auto;" id="create-type-confidential"> <label>Confidential</label>
+							<input type="radio" name="clientTypeModal" style="min-width: auto;" id="create-type-public"> <label>Public</label>
 						</div><br>
-						<div style="width: 100%; display: flex; justify-content: center; align-items: center;"><button style="font-size: 1.25rem;">Create</button></div>
+						<div style="display: none;" id="create-final">
+						<pre>Client ID    :</pre><input id="create-client_id"><br>
+						<pre>Client Secret:</pre><input id="create-client_secret"><br>
+						</div>
+						<span style="display: none; justify-content: center; align-items: center; width: 100%; border: 1px red solid;" id="create-error">Error</span><br>
+						<div style="width: 100%; display: flex; justify-content: center; align-items: center;"><button onclick="createClient()" style="font-size: 1.25rem;">Create</button></div>
 					</div>
 				</div>
 			</div>
@@ -263,13 +272,95 @@
 		document.getElementById("authorized-apps-count").innerText = userInfo.authorizedApps.length;
 		const authList = document.getElementById("authorized-apps-list");
 		for(let i in userInfo.loginMethods){
+			if(!userInfo.authorizedApps[i])
+				continue;
 			const key = `authorized-apps-element-${i}`;
 			const text = capitalizeFirstLetter(userInfo.authorizedApps[i].name);
 			authList.insertAdjacentHTML("beforeend",`<li><span id="${key}"><span><button onclick="revokeClient('${userInfo.authorizedApps[i].client_id}')">Revoke</button></li>`);
 			document.getElementById(key).innerText = text;
 		}
 
+		const ownedClients = document.getElementById("owned-clients");
+		for(let i in userInfo.ownedClients){
+			const json = userInfo.ownedClients[i];
+			ownedClients.insertAdjacentHTML("afterbegin",`
+				<card>
+					<a href="#" id="change-anchor-${i}"></a><br>
+					<pre>Name         :</pre><input id="change-name-${i}" disabled><br>
+					<pre>Client ID    :</pre><input id="change-client_id-${i}" disabled><br>
+					<pre>Redirect URI :</pre><input id="change-redirect_uri-${i}"><br>
+					<pre>Client Secret:</pre><button onclick="resetClientSecret(${i})" style="min-width: 16rem;">Create/Reset</button><br>
+					<pre>Client Type  :</pre>
+					<div style="display: inline;">
+						<input id="change-type-confidential-${i}" type="radio" name="clientType-${i}" style="min-width: auto;"> <label>Confidential</label>
+						<input id="change-type-public-${i}" type="radio" name="clientType-${i}" style="min-width: auto;"> <label>Public</label>
+					</div><br>
+					<div>
+						<button onclick="cancelChange(${i})">Cancel</button>
+						<button onclick="saveChange(${i})">Save</button>
+						<button onclick="deleteClient(${i})">Delete</button>
+					</div>
+				</card>
+				`);
+			document.getElementById(`change-anchor-${i}`).innerText = json.name;
+			document.getElementById(`change-anchor-${i}`).href = `#${json.name}`;
+			document.getElementById(`change-name-${i}`).value = json.name;
+			document.getElementById(`change-client_id-${i}`).value = json.client_id;
+			document.getElementById(`change-redirect_uri-${i}`).value = json.redirect_uri[0];
+			document.getElementById(`change-type-confidential-${i}`).checked = json.client_type == 'confidential' ? true : false;
+			document.getElementById(`change-type-public-${i}`).checked = json.client_id == 'public' ? true : false;
+		}
 
+
+	}
+	async function createClient(){
+		const name = document.getElementById("create-name").value;
+		const redirect_uri = document.getElementById("create-redirect_uri").value;
+		const typePublic = document.getElementById("create-type-public").checked;
+		const typeConfidential = document.getElementById("create-type-confidential").checked;
+		const err = document.getElementById("create-error");
+		const createFinal = document.getElementById("create-final");
+		const client_id = document.getElementById("create-client_id");
+		const client_secret = document.getElementById("create-client_secret");
+		const type = typePublic ? 'public' : 'confidential';
+
+		const showError = (text) => {
+			err.style.display = 'flex';
+			err.innerText = text;
+		}
+
+		try {
+			const url = new URL(redirect_uri);
+		} catch(error){
+			showError("redirect_uri must be a real URL");
+			return;
+		}
+		if(!name){
+			showError("You must have a name.");
+			return;
+		}
+
+		const res = await fetch("/api/oauth2/client",{
+			method: 'POST',
+			headers: {
+				'Authorization' : 'Session'
+			},
+			body: JSON.stringify({
+				name: name,
+				client_type: type,
+				redirect_uri: redirect_uri,
+			}),
+		});
+		if(!res.ok){
+			showError(await res.text());
+			return;
+		}
+		const json = await res.json();
+		console.log("cretaeClient",json);
+		err.style.display = 'none';
+		client_id.value = json.client_id;
+		client_secret.value = json.client_secret;
+		createFinal.style.display = 'block';
 	}
 	init();
 

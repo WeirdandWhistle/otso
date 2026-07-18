@@ -87,6 +87,24 @@ export async function getOAuthClientsFromUserID(env, userID){
 	return results;
 
 }
+export async function getOAuthClientFromName(env, name){
+	return returnResults(await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM OAuthClients WHERE name=? LIMIT 1;
+			`)
+		.bind(name)
+		.run()
+	);
+}
+export async function createOAuthClient(env, client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID) {
+	await env.OTSO_DB
+		.prepare(`
+			INSERT INTO OAuthClients (client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID)
+			VALUES (?, ?, ?, ?, ?, ?);
+			`)
+		.bind(client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID)
+		.run();
+}
 // OAuthTokens
 export async function createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id) {
     await env.OTSO_DB

@@ -267,6 +267,7 @@ export default {
 				const authType = authHeader.split(" ")[0].toLowerCase();
 				if(authType == "session"){
 					const user = await session.getUserIfSession(request, env);
+					console.log("user",user);
 					if(!user)
 						return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
 					const out = {};
@@ -289,7 +290,8 @@ export default {
 						});
 					}
 					out.ownedClients = [];
-					const ownedClients = await db.getOAuthClientFromClientID(env, user.userID);
+					const ownedClients = await db.getOAuthClientsFromUserID(env, user.userID);
+					console.log(ownedClients);
 					if(ownedClients){
 						for(const client of ownedClients){
 							out.ownedClients.push({
@@ -302,40 +304,90 @@ export default {
 					}
 					return new Response(JSON.stringify(out));
 				} else if(authType == "bearer"){
-
+					return new Response("501 Not Implemented. Meant for access_tokens, but that doesnt exist right now.", {status: 502});
 				} else {
 					return new Response("401 Unauthorized. Unknown auth-scheme. Try 'Bearer' or 'Session'.", {status: 401});
 				}
+			} else if(pathname.startsWith("/api/account/authorizeApp")){
+				if(request.method != 'POST')
+					return new Response("405 Method Not Allowed. Try using 'POST'", {status:405});
+
+				const user = await session.getUserIfSession(request, env);
+				if(!user)
+					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
+
+				const requestJson = await request.json();
+				if(!requestJson.client_id)
+					return new Response("400 Bad Request. This enpoint requires a 'client_id' in the JSON.", {status: 400});
+
+				const client = await db.getOAuthClientFromClientID(env, requestJson.client_id);
+
+				if(!client)
+					return new Response("400 Bad Request. Client does not exist.",{status: 400});
+
+				await db.addAuthorizedApp(env, user.userID, client.client_id);
+				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
+			} else if(pathname.startsWith("/api/oauth2/client")){
+				if(request.method != "POST")
+					return new Response("405 Method Not Allowed. Try using the 'POST' method.",{status: 405});
+				const authHeader = request.headers.get("Authorization");
+				const authType = authHeader.split(" ")[0].toLowerCase();
+				if(authType != "session")
+					return new Response("401 Unauthorized. Try using the 'Session' authorization header.", {status: 401});
+
+				const user = await session.getUserIfSession(request, env);
+				if(!user)
+					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
+
+				const json = await request.json();
+				if(!json.name || !json.redirect_uri || !json.client_type)
+					return new Response("400 Bad Request. Missing a parameter. Either name, redirect_uri, or client_type.", {status: 400});
+				if(!validUsername(json.name))
+					return new Response("400 Bad Request. Name is not valid.", {status: 400});
+				try {
+					const url = new URL(json.redirect_uri);
+					if(url.protocol != 'https:' && url.hostname != 'localhost')
+						return new Response("400 Bad Request. Must use 'https' OR 'localhost'. If you used '127.0.0.1' just change it to 'localhost'.",{status:400});
+				} catch (error) {
+					return new Response("400 Bad Request. Not A valid URL.", {status:400});
+				}
+				if(json.client_type != 'public' && json.client_type != 'confidential')
+					return new Response("400 Bad Request. There are only two types of OAuth 2.0 Clients.", {status:400});
+				const oldClient = await db.getOAuthClientFromName(env, json.name);
+				if(oldClient)
+					return new Response("400 Bad Request. Client name is already in use.",{status:400});
+
+				const client_id = generateSecureChars(32);
+				const client_secret = "shh-" + generateSecureChars(16) + "-" + generateSecureChars(16);
+				const client_secret_hash = await base64SHA256(client_secret);
+
+				await db.createOAuthClient(env, client_id, client_secret_hash, json.redirect_uri, json.client_type, json.name, user.userID);
+				return new Response(JSON.stringify({
+					client_secret: client_secret,
+					client_id: client_id,
+					name: json.name,
+				}));
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
 				return OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
 				return OAuthProvider.token(request, env, KV);
-			} else if(pathname.startsWith("/api/account/authorizeApp")){
-				if(request.method != 'POST')
-					return new Response("405 Method Not Allowed. Try using 'POST'", {status:405});
-				const user = await session.getUserIfSession(request, env);
-				if(!user)
-					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
-				const requestJson = await request.json();
-				if(!requestJson.client_id)
-					return new Response("400 Bad Request. This enpoint requires a 'client_id' in the JSON.", {status: 400});
-				const client = await db.getOAuthClientFromClientID(env, requestJson.client_id);
-				if(!client)
-					return new Response("400 Bad Request. Client does not exist.",{status: 400});
-				await db.addAuthorizedApp(env, user.userID, client.client_id);
-				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
 			}
 		}
 
 		return new Response("404 Not Found", {
 			status: 404,
 			headers: {
-				'Content-Type' : 'text',
+				'Content-Type' : 'text/plain',
 			}
 		});
 	}
 };
 
+const base64SHA256 = async (text) => {
+	let buffer = new TextEncoder().encode(text).buffer;
+	buffer = await crypto.subtle.digest("SHA-256", buffer);
+	return new Uint8Array(buffer).toBase64({alphabet: "base64url", omitPadding: true});
+}
 // returns true/false. true for being ratelimited, and false when under the limit
 const ratelimit = (KV, key, perMinute) => {
 
@@ -410,3 +462,8 @@ const correctUsername = (username) => {
 	}
 	return res;
 }
+const generateSecureChars = (length) => {
+	const buf = new Uint8Array(length+1);
+	crypto.getRandomValues(buf);
+	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
+};
