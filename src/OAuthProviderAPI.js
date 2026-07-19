@@ -1,5 +1,6 @@
 import * as db from "./databaseInteraction.js";
 import { getUserIfSession } from "./sessions.js";
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars } from './randomData.js';
 
 // OAuth 2.0 endpoints
 export async function authorize(request, env, KV){
@@ -203,8 +204,3 @@ async function issueAccessToken(env, userID, client_id, scopes, ttl){
         refresh_token: refresh_token,
     };
 }
-const generateSecureChars = (length) => {
-	const buf = new Uint8Array(length+1);
-	crypto.getRandomValues(buf);
-	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
-};

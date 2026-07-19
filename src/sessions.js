@@ -1,4 +1,5 @@
 import * as db from "./databaseInteraction.js"
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars } from './randomData.js';
 
 export async function issueSession(env, userID, headers){
     const sessionID = generateSecureChars(64);
@@ -19,7 +20,7 @@ export async function getUserIfSession(request, env){
         if(cookie.split("=")[0] == "session")
             sessionID = cookie.split("=")[1];
     }
-    
+
     if(!sessionID)
         return null;
     const userID = await db.getUserIDFromSession(env, sessionID);
@@ -28,10 +29,3 @@ export async function getUserIfSession(request, env){
         return null;
     return await db.getUserFromUserID(env, userID);
 }
-
-const generateSecureChars = (length) => {
-	const buf = new Uint8Array(length+1);
-	crypto.getRandomValues(buf);
-    // console.log("base64 secureChars", buf.toBase64({alphabet: "base64url", omitPadding: true}));
-	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
-};
