@@ -3,7 +3,7 @@
  *
  * - Run `npm run dev` in your terminal to start a development server
  * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
+* - Run `npm run deploy` to publish your worker
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
@@ -11,10 +11,12 @@
 const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.whynotjava.net)";
 // OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID } from './randomData.js';
 import * as db from "./databaseInteraction.js";
 import * as KV from "./customKV.js";
 import * as session from "./sessions.js";
 import * as OAuthProvider from "./OAuthProviderAPI.js";
+import * as OAuthClients from './OAuthClients.js';
 
 export default {
 	async fetch(request, env, ctx) {
@@ -221,7 +223,7 @@ export default {
 
 		if(pathname.startsWith("/api/")){
 			if(ratelimit(KV, `${request.headers.get("CF-Connecting-IP")}`, 60))
-					return new Response("429 Too Many Requets", {status: 429});
+				return new Response("429 Too Many Requets", {status: 429});
 			if(pathname.startsWith("/api/account/createAccount")){
 				if(request.method != 'POST')
 					return new Response("405 Method Not Allowed", {status:405});
@@ -255,7 +257,7 @@ export default {
 				const sessionCookie = session.getCookie(sessionID);
 				headers.append("Set-Cookie", sessionCookie);
 				headers.append("Content-Type","application/json");
-				console.log('oauthstae',OAuthState);
+				//console.log('oauthstae',OAuthState);
 
 				return new Response(JSON.stringify({
 						ok: true,
@@ -271,7 +273,7 @@ export default {
 				const authType = authHeader.split(" ")[0].toLowerCase();
 				if(authType == "session"){
 					const user = await session.getUserIfSession(request, env);
-					console.log("user",user);
+					//console.log("user",user);
 					if(!user)
 						return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
 					const out = {};
@@ -285,7 +287,7 @@ export default {
 					for(let client_id of clientIDArray){
 						const client = await db.getOAuthClientFromClientID(env, client_id);
 						if(!client){
-							console.log("client_id",client_id,"is null");
+							//console.log("client_id",client_id,"is null");
 							continue;
 						}
 						out.authorizedApps.push({
@@ -295,7 +297,7 @@ export default {
 					}
 					out.ownedClients = [];
 					const ownedClients = await db.getOAuthClientsFromUserID(env, user.userID);
-					console.log(ownedClients);
+					//console.log(ownedClients);
 					if(ownedClients){
 						for(const client of ownedClients){
 							out.ownedClients.push({
@@ -332,49 +334,11 @@ export default {
 				await db.addAuthorizedApp(env, user.userID, client.client_id);
 				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
 			} else if(pathname.startsWith("/api/oauth2/client")){
-				if(request.method != "POST")
-					return new Response("405 Method Not Allowed. Try using the 'POST' method.",{status: 405});
-				const authHeader = request.headers.get("Authorization");
-				const authType = authHeader.split(" ")[0].toLowerCase();
-				if(authType != "session")
-					return new Response("401 Unauthorized. Try using the 'Session' authorization header.", {status: 401});
-
-				const user = await session.getUserIfSession(request, env);
-				if(!user)
-					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
-
-				const json = await request.json();
-				if(!json.name || !json.redirect_uri || !json.client_type)
-					return new Response("400 Bad Request. Missing a parameter. Either name, redirect_uri, or client_type.", {status: 400});
-				if(!validUsername(json.name))
-					return new Response("400 Bad Request. Name is not valid.", {status: 400});
-				try {
-					const url = new URL(json.redirect_uri);
-					if(url.protocol != 'https:' && url.hostname != 'localhost')
-						return new Response("400 Bad Request. Must use 'https' OR 'localhost'. If you used '127.0.0.1' just change it to 'localhost'.",{status:400});
-				} catch (error) {
-					return new Response("400 Bad Request. Not A valid URL.", {status:400});
-				}
-				if(json.client_type != 'public' && json.client_type != 'confidential')
-					return new Response("400 Bad Request. There are only two types of OAuth 2.0 Clients.", {status:400});
-				const oldClient = await db.getOAuthClientFromName(env, json.name);
-				if(oldClient)
-					return new Response("400 Bad Request. Client name is already in use.",{status:400});
-
-				const client_id = generateSecureChars(32);
-				const client_secret = "shh-" + generateSecureChars(16) + "-" + generateSecureChars(16);
-				const client_secret_hash = await base64SHA256(client_secret);
-
-				await db.createOAuthClient(env, client_id, client_secret_hash, json.redirect_uri, json.client_type, json.name, user.userID);
-				return new Response(JSON.stringify({
-					client_secret: client_secret,
-					client_id: client_id,
-					name: json.name,
-				}));
+				return await OAuthClients.client(request, env);
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
-				return OAuthProvider.authorize(request, env, KV);
+				return await OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
-				return OAuthProvider.token(request, env, KV);
+				return await OAuthProvider.token(request, env, KV);
 			}
 		}
 
@@ -387,11 +351,6 @@ export default {
 	}
 };
 
-const base64SHA256 = async (text) => {
-	let buffer = new TextEncoder().encode(text).buffer;
-	buffer = await crypto.subtle.digest("SHA-256", buffer);
-	return new Uint8Array(buffer).toBase64({alphabet: "base64url", omitPadding: true});
-}
 // returns true/false. true for being ratelimited, and false when under the limit
 const ratelimit = (KV, key, perMinute) => {
 
@@ -415,59 +374,4 @@ const ratelimit = (KV, key, perMinute) => {
 	return false;
 
 }
-const generateRandomString = (length) => {
-  let result = '';
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.';
-  const charactersLength = characters.length;
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-};
-const generateUserID = () => {
-	const buf = new Uint8Array(16);
-	crypto.getRandomValues(buf);
-	return buf.toBase64({alphabet: "base64url", omitPadding: true});
-};
-const allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_ ";
-const usernameMaxLength = 100;
-const validUsername = (username) => {
-	if(username.length <= 0 || username.length > usernameMaxLength)
-		return false;
-	for(let i = 0; i<username.length;i++){
-		if(!allowedChars.includes(username.charAt(i))){
-			return false;
-		}
-	}
-	return true;
-}
-const correctUsername = (username) => {
-	let res = '';
-	if(username.length <= 0){
-		for(let i = 0; i < 15; i++){
-			res += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
-		}
-		return res;
-	} else if(username.length > usernameMaxLength){
-		username = username.sub(0, usernameMaxLength-1);
-	}
 
-	for(let i = 0; i<username.length;i++){
-		if(allowedChars.includes(username.charAt(i))){
-			res += username.charAt(i);
-		}
-	}
-	if(res.length <= 0){
-		for(let i = 0; i < 15; i++){
-			res += allowedChars.charAt(Math.floor(Math.random() * allowedChars.length));
-		}
-		return res;
-	}
-	return res;
-}
-const generateSecureChars = (length) => {
-	const buf = new Uint8Array(length+1);
-	crypto.getRandomValues(buf);
-	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
-};
