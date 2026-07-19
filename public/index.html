@@ -15,11 +15,20 @@
             background-color: var(--background-color);
             color: var(--color);
         }
+				::backdrop{
+					background-color: #00000088;
+				}
     </style>
 </head>
 <body>
 
 		<<h1>This is index.html</h1>
+
+		<button command="show-modal" commandfor="modal">Open seasme</button>
+		<dialog id="modal" closedby="any" style="background-color: var(--background-color); color: var(--color); width: 80%; padding: 1rem;">
+			<p>This was opened without js?!?!</p>
+			<button command="close" commandfor="modal">Close</button>
+		</dialog>
 
 
 
