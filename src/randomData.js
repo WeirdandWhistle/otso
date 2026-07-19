@@ -16,7 +16,8 @@ export const generateRandomString = (length) => {
 export const generateUserID = () => {
 	return generateSecureChars(42);
 };
-export const allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_ ";
+export const allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_. ";
+
 export const usernameMaxLength = 100;
 export const validUsername = (username) => {
 	if(username.length <= 0 || username.length > usernameMaxLength)

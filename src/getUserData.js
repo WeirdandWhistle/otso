@@ -69,7 +69,7 @@ export async function getSlackUser(tokens) {
 	if(!slackInfo.ok)
 		throw new Error(`Slack API failed with status ${slackInfo.status}. Text: `+await slackInfo.text());
 	const slackJson = await slackInfo.json();
-	
+
 	return {
 		username: slackJson.user.name,
 		id: slackJson.user.id,
@@ -113,6 +113,6 @@ export async function getTwitchUser(access_token, client_id) {
 		username: json.login,
 		id: json.id,
 		email: json.email,
-        issuer: "discord",
+        issuer: "twitch",
 	};
 }

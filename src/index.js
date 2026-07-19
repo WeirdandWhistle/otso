@@ -17,6 +17,7 @@ import * as KV from "./customKV.js";
 import * as session from "./sessions.js";
 import * as OAuthProvider from "./OAuthProviderAPI.js";
 import * as OAuthClients from './OAuthClients.js';
+import * as linker from './linkAccounts.js';
 
 export default {
 	async fetch(request, env, ctx) {
@@ -73,7 +74,7 @@ export default {
 				stateJson.redirect_from = redirect_from;
 			console.log("oauth/state", stateJson);
 			stateJson.auth = provider;
-			KV.put(`state.${state}`, stateJson, 60);
+			KV.put(`state.${state}`, stateJson, 60 * 3);
 			query.set("client_id", client_id);
 
 			forward_url.search = query.toString();
@@ -183,12 +184,24 @@ export default {
 			if(!user){
 
 				OAuthState.issuerInfo = issuerInfo;
-				KV.put(`state.${state}`, OAuthState, 60);
+				KV.put(`state.${state}`, OAuthState, 60 * 5);
 
 				const sp = new URLSearchParams();
 				sp.set("state", state);
 				sp.set("username", issuerInfo.username);
 				sp.set("email", issuerInfo.email);
+
+				const otherUsername = await db.getUserFromUsername(env, issuerInfo.username);
+				const otherEmail = await db.getUserFromEmail(env, issuerInfo.email);
+
+				if(otherUsername){
+					sp.set("username", `unfun.username-${generateRandomString(24)}`);
+					sp.set("otherUsername", otherUsername.username);
+					sp.set("linkURL", `/api/account/link?type=create-username&userID=${otherUsername.username}&state=${state}`);
+				} else if(otherEmail){
+					sp.set("otherEmail", otherEmail.length);
+					sp.set("linkURL", `/api/account/link?type=create-email&email=${issuerInfo.email}&state=${state}`);
+				}
 
 				const toURL = "/firstTime?" + sp.toString();
 
@@ -229,11 +242,13 @@ export default {
 					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
 				const state = postJson.state;
+				//console.log("create account json",postJson);
 
 				const OAuthState = KV.get(`state.${state}`);
 				if(!OAuthState)
 					return new Response(`{"ok":false,"error":"invalid_state"}`, { status: 400 });
-				// console.log("OAuthState createACoount", OAuthState);
+				KV.put(`state.${state}`, OAuthState, 60 * 5);
+				console.log("OAuthState createACoount", OAuthState);
 				// console.log("postJson createACoount", postJson);
 
 				let username = OAuthState.issuerInfo.username;
@@ -244,9 +259,17 @@ export default {
 
 				let email = OAuthState.issuerInfo.email;
 				const id = OAuthState.issuerInfo.id;
-				const issuer = OAuthState.issuerInfo.issuer;
+				const issuer = OAuthState.auth;
 				const access_token = OAuthState.issuerInfo.access_token;
 				const refresh_token = OAuthState.issuerInfo.refresh_token;
+
+				//console.log('craete accounte username',username);
+				const otherUser = await db.getUserFromUsername(env, username);
+				if(otherUser)
+					return new Response(JSON.stringify({
+						ok: false,
+						error: 'Someone has already taken that username.',
+					}));
 
 				const userID = generateUserID();
 				await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
@@ -333,6 +356,8 @@ export default {
 
 				await db.addAuthorizedApp(env, user.userID, client.client_id);
 				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
+			} else if(pathname.startsWith("/api/account/link")){
+				return await linker.linkAccounts(request, env, KV);
 			} else if(pathname.startsWith("/api/account/logout")){
 				return await session.clearSession(request, env);
 			} else if(pathname.startsWith("/api/oauth2/client")){

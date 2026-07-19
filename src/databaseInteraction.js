@@ -16,6 +16,26 @@ export async function getUserFromUserID(env, userID) {
         .bind(userID)
         .run());
 }
+export async function getUserFromUsername(env, username){
+	return returnResults(await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM Users WHERE username=? LIMIT 1;
+			`)
+		.bind(username)
+		.run());
+}
+export async function getUserFromEmail(env, email){
+	const raw = await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM Users WHERE email=? LIMIT 1;
+			`)
+		.bind(email)
+		.run();
+	if(raw.results.length <= 0)
+		return null;
+	return raw.results;
+
+}
 export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
 	if(!issuer)
 		throw new Error("issuer is null");

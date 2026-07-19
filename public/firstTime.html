@@ -67,31 +67,42 @@
     </style>
 </head>
 <body>
-    <div class="card" style="min-width: 50rem;">
-        <greeting style="height: 6rem; flex-direction: column;" class="center">
-            <h1>First Time?</h1>
-            <p style="position: relative; top: -1.5rem; ">It's great to have you.</p>
-        </greeting>
+	<div class="card" style="min-width: 50rem;">
+		<greeting style="height: 6rem; flex-direction: column;" class="center">
+			<h1>First Time?</h1>
+			<p style="position: relative; top: -1.5rem; ">It's great to have you.</p>
+		</greeting>
 
-        <hr style="width: 100%;">
+		<hr style="width: 100%;">
 
-        <p>Please take a moment to confirm a few details about you.</p>
-        <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
-            <pre>Username          :</pre>
-            <input id="username" type="text" autocomplete="username">
-        </div>
-         <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
-            <pre>Provider Email    :</pre>
-            <input id="email" type="email" autocomplete="email" disabled style="cursor: not-allowed;">
-        </div>
-         <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
-            <pre>Provider username :</pre>
-            <input id="providerUsername" disabled style="cursor: not-allowed;">
-        </div>
+		<p>Please take a moment to confirm a few details about you.</p>
+		<div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+			<pre>Username          :</pre>
+			<input id="username" type="text" autocomplete="username">
+		</div>
+		 <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+			<pre>Provider Email    :</pre>
+			<input id="email" type="email" autocomplete="email" disabled style="cursor: not-allowed;">
+		</div>
+		 <div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+			<pre>Provider username :</pre>
+			<input id="providerUsername" disabled style="cursor: not-allowed;">
+		</div>
+		<span id="createError" style="display: none; color: red;"></span>
+		<button onclick="postAccount()">Yup everything looks good</button>
 
-        <button onclick="postAccount()">Yup everything looks good</button>
+		<div id="linkAccountsSection" style="display: none; flex-direction: column; align-items:center;gap:0.25rem;">
+			<hr style="width: 100%;">
 
-    </div>
+			<span>Wait a minute! There appears to be another account that shares some details with you. If this is you, then you can link both accounts.</span>
+			<span id="linkJSMessgae"></span>
+			<button onclick="linkAccounts()">Link Account</button>
+			<span style="font-size: 0.8rem;">Dont worry, there will be another chance to review your data before anything happens.</span>
+
+		</div>
+
+
+	</div>
     <script>
         const query = new URL(window.location).searchParams;
         const state = query.get("state");
@@ -101,12 +112,14 @@
         document.getElementById("username").value = username;
         document.getElementById("email").value = email;
         document.getElementById("providerUsername").value = username;
+				const createError = document.getElementById("createError");
 
         async function postAccount(){
+					createError.style.display = 'none';
             const res = await fetch("/api/account/createAccount", {
                 method: 'POST',
                 body: JSON.stringify({
-                    username: username,
+                    username: document.getElementById("username").value,
                     state: state,
                 })
             });
@@ -115,10 +128,37 @@
                 throw new Error(res);
             }
             const json = await res.json();
-						console.log(json);
-						window.location = json.redirect_uri;
+					console.log(json);
+						if(json.ok){
+							window.location = json.redirect_uri;
+						} else {
+							setTimeout(()=>{
+								createError.innerText = json.error;
+								createError.style.display = 'block';
+							}, 100);
+						}
 
         }
+
+
+				const linkAccountHTML = document.getElementById("linkAccountsSection");
+				const linkJSMessage = document.getElementById("linkJSMessage");
+
+				function linkAccountManager(){
+					console.log(query);
+					if(!query.get("otherEmail") && !query.get("otherUsername"))
+						return;
+					linkAccountHTML.style.display = 'flex';
+					if(query.get("otherUsername")){
+						linkJSMessgae.innerText = `Someone else already has the username ${query.get("otherUsername")}. If this is you click 'Link Account'.`;
+					} else if(query.get("otherEmail")){
+						linkJSMessgae.innerText = `Someone else already has the email ${email}. If this is you click 'Link Account'.`;
+					}
+				}
+				function linkAccounts(){
+					window.location = query.get("linkURL");
+				}
+				linkAccountManager();
     </script>
 </body>
 </html>
