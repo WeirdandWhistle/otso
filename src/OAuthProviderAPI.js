@@ -89,7 +89,7 @@ export async function authorize(request, env, KV){
         }
     }
     if(!isAppAuthorized){
-        const HTMLPage = await env.ASSETS.fetch(new Request(`${env.HOST}/authorizeApp.html`)); // forges a request to get the HTML page from assets
+        const HTMLPage = await env.ASSETS.fetch(new Request(`/authorizeApp.html`)); // forges a request to get the HTML page from assets
         const dataToEncode = { // data to be passed to frontend
             appName: OAuthClient.name,
             username: user.username,

@@ -70,7 +70,7 @@ export default {
 			let stateJson = KV.get(`state.${state}`);
 			if(!stateJson)
 				stateJson = {};
-			if(redirect_from && !stateJson.redirect_from)
+			if(redirect_from)
 				stateJson.redirect_from = redirect_from;
 			console.log("oauth/state", stateJson);
 			stateJson.auth = provider;

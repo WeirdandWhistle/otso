@@ -36,6 +36,25 @@ export async function getUserFromEmail(env, email){
 	return raw.results;
 
 }
+export async function updateUser(env, userID, authenticationMethods, authorizedApps, email, username) {
+	await env.OTSO_DB
+		.prepare(`
+			UPDATE Users
+			SET authenticationMethods=?, authorizedApps=?, email=?, username=?
+			WHERE userID=?;
+			`)
+		.bind(authenticationMethods ?? '', authorizedApps ?? '', email ?? null, username, userID)
+		.run();
+}
+export async function createOAuthIssuer(env, ID, issuer, username, email, access_token, refresh_token, userID) {
+	await env.OTSO_DB
+		.prepare(`
+			INSERT INTO OAuthIssuers (ID, issuer, username, email, access_token, refresh_token, userID)
+			VALUES (?, ?, ?, ?, ?, ?, ?);
+			`)
+		.bind(ID, issuer, username ?? null, email ?? null, access_token ?? null, refresh_token ?? null, userID)
+		.run();
+}
 export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
 	if(!issuer)
 		throw new Error("issuer is null");

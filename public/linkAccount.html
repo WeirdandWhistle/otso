@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Otso Guardian</title>
+    <style>
+        :root{
+            --login-with-width: 200px;
+            --color: rgb(220, 220, 220);
+            --background-color: #1c1b22;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        input{
+            color: var(--color);
+            border: none;
+            outline: none;
+            background-color: #2c2b32;
+            padding-left: 0.3rem;
+            padding-right: 0.3rem;
+        }
+        .center{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card{
+            border: 1px var(--color) solid;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        pre{
+            display: inline;
+        }
+        hr{
+            background-color: var(--color);
+            color: var(--color);
+        }
+        button{
+            border: 1px var(--color) solid;
+            outline: none;
+            font-size: 1.3rem;
+            /* border-radius: 2rem; */
+            background-color: #2c2b32;
+            color: var(--color);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover{
+            background-color: #36353e;
+            transform: scale(1.05);
+            box-shadow: 5px 5px 5px black;
+        }
+
+    </style>
+</head>
+<body>
+	<div class="card" style="min-width: 50rem;">
+		<greeting style="height: 6rem; flex-direction: column;" class="center">
+			<h1>Linking Accounts?</h1>
+			<p style="position: relative; top: -1.5rem; ">Your in the right place.</p>
+		</greeting>
+
+		<hr style="width: 100%;">
+
+		<span>Please chose the details you want associated with your account. The new Authentication method will be added automaticly.</span>
+		<div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+			<pre>Username:</pre>
+			<input id="username" type="text" autocomplete="username">
+		</div>
+		<div style="border: 1px var(--color) solid; padding: 10px; min-width: 25rem;">
+			<pre>Email   :</pre>
+			<input type="radio" name="email" id="email1-input"><label id="email1-label"></label><br>
+			<input type="radio" name="email" id="email2-input"><label id="email2-label"></label><br>
+		</div>
+
+		<span id="error" style="display: none; color: red;"></span>
+		<button onclick="linkAccount()">Link Account</button>
+
+	</div>
+	<script>
+		console.log("scipt started!");
+
+		const email1 = document.getElementById("email1-input");
+		const email1Label = document.getElementById("email1-label");
+		const email2 = document.getElementById("email2-input");
+		const email2Label = document.getElementById("email2-label");
+		const username = document.getElementById("username");
+
+		const errMes = document.getElementById("error");
+
+		const data = JSON.parse('{"where":"RIGHT HERE! INSERT DATA RIGHT HERE! [insert data here!]"}');
+
+		username.value = data.username;
+		email1Label.innerText = data.email1;
+		email1.checked = true;
+		email2Label.innerText = data.email2;
+
+		async function linkAccount(){
+			errMes.style.display = 'none';
+			const state = new URL(window.location).searchParams.get("state");
+			const temp = JSON.stringify({
+					username: username.value,
+					email: email1.checked ? data.email1 : data.email2,
+					state: state,
+				});
+			console.log("/api/accout/link POST",temp);
+			const res = await fetch("/api/account/link",{
+				method: 'POST',
+				body:temp,
+			});
+
+			if(!res.ok){
+				setTimeout(async ()=>{
+					errMes.style.display = 'block';
+					errMes.innerText = await res.text();
+				}, 123);
+				return;
+			}
+
+			const outJson = await res.json();
+			console.log("/api/account/link RESPONSE",outJson);
+			window.location = outJson.redirect_uri;
+		}
+	</script>
+</body>
+</html>
