@@ -106,10 +106,7 @@
 				box-shadow: 5px 5px 5px black;
 		}
 		.modal{
-			display: none;
-			position: fixed;
-			z-index: 1;
-			left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color:#00000088;
+			display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color:#00000088;
 		}
 		.modal-content{
 			background-color: var(--background-color);
@@ -164,7 +161,7 @@
 			<a id="authorized-apps" href="#authorized-apps">Authorized Apps</a><br>
 			You have authrozied <b id="authorized-apps-count"></b> app.<br>
 			<ul id="authorized-apps-list">
-				<li>Puke-Mail&#9;<button onclick="revokeClient('client_id')">Revoke</button></li>
+				<!--<li>Puke-Mail&#9;<button onclick="revokeClient('client_id')">Revoke</button></li>-->
 			</ul>
 		</div>
 		<div>
@@ -291,9 +288,9 @@
 		for(let i in userInfo.ownedClients){
 			const json = userInfo.ownedClients[i];
 			ownedClients.insertAdjacentHTML("afterbegin",`
-				<card>
+				<card id="change-card-${i}">
 					<a href="#" id="change-anchor-${i}"></a><br>
-					<pre>Name         :</pre><input id="change-name-${i}" disabled><br>
+					<pre>Name         :</pre><input id="change-name-${i}"><br>
 					<pre>Client ID    :</pre><input id="change-client_id-${i}" disabled><br>
 					<pre>Redirect URI :</pre><input id="change-redirect_uri-${i}"><br>
 					<pre>Client Secret:</pre><button onclick="resetClientSecret(${i})" style="min-width: 16rem;">Create/Reset</button><br>
@@ -319,6 +316,60 @@
 		}
 
 
+	}
+	async function cancelChange(index){
+		location.reload();
+	}
+	async function saveChange(index){
+		const name = document.getElementById(`change-name-${index}`).value;
+		const client_id = document.getElementById(`change-client_id-${index}`).value;
+		const redirect_uri = document.getElementById(`change-redirect_uri-${index}`).value;
+		const client_type = document.getElementById(`change-type-public-${index}`).checked ? 'public' : 'confidential';
+
+		const res = await fetch("/api/oauth2/client",{
+			method: 'PATCH',
+			headers:{
+				'Authorization' : 'Session'
+			},
+			body: JSON.stringify({
+				name: name,
+				client_id: client_id,
+				redirect_uri: redirect_uri,
+				client_type: client_type,
+			}),
+		});
+		if(!res.ok){
+			const temp = await res.text();
+			alert(`We are sorry, an error occured while trying to delete '${name}' please try again. ${temp.length < 150 ? `The error is ${temp}` : ''}`);
+			console.log("error",await res.text());
+			return;
+		}
+
+	}
+	async function deleteClient(index){
+		const name = document.getElementById(`change-name-${index}`).value;
+		const client_id = document.getElementById(`change-client_id-${index}`).value;
+
+		const chose = confirm(`Are you sure you want to delete '${name}'?\nThis action is permanent and can NOT be undone.`);
+		if(!chose)
+			return;
+		console.log("user confirmed deletion of client_id",client_id);
+		const res = await fetch("/api/oauth2/client",{
+			method: 'DELETE',
+			headers:{
+				'Authorization' : 'Session'
+			},
+			body: JSON.stringify({
+				client_id: client_id,
+			}),
+		});
+		if(!res.ok){
+			const temp = await res.text();
+			alert(`We are sorry, an error occured while trying to delete '${name}' please try again. ${temp.length < 150 ? `The error is ${temp}` : ''}`);
+			console.log("error",await res.text());
+			return;
+		}
+		document.getElementById(`change-card-${index}`).style.display = 'none';
 	}
 	async function createClient(){
 
@@ -371,6 +422,7 @@
 			return;
 		}
 		const json = await res.json();
+		document.body.style.cursor = 'default';
 		console.log("cretaeClient",json);
 		err.style.display = 'none';
 		client_id.value = json.client_id;
