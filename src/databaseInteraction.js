@@ -58,7 +58,7 @@ export async function getUserIDFromSession(env, sessionID) {
 			return null;
 		return temp.userID;
 }
-export async function createSession(env, sessionID, userID, sessionData) {
+export async function createSession(env, sessionID, userID, sessionData){
     await env.OTSO_DB
         .prepare(`
             INSERT INTO Sessions (sessionID, userID, sessionData)
@@ -66,6 +66,14 @@ export async function createSession(env, sessionID, userID, sessionData) {
             `)
         .bind(sessionID, userID, sessionData)
         .run();
+}
+export async function deleteSession(env, sessionID){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM Sessions WHERE sessionID=?;
+			`)
+		.bind(sessionID)
+		.run()
 }
 
 // OAuthClients

@@ -333,6 +333,8 @@ export default {
 
 				await db.addAuthorizedApp(env, user.userID, client.client_id);
 				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
+			} else if(pathname.startsWith("/api/account/logout")){
+				return await session.clearSession(request, env);
 			} else if(pathname.startsWith("/api/oauth2/client")){
 				return await OAuthClients.client(request, env);
 			} else if(pathname.startsWith("/api/oauth2/authorize")){

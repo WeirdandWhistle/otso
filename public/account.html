@@ -140,6 +140,8 @@
 		<a href="#login-methods">Login Methods</a>
 		<a href="#authorized-apps">Authorized Apps</a>
 		<a href="#clients">My OAuth Clients</a>
+
+		<a onclick="logout()">Logout</a>
 	</div>
 
 	<main>
@@ -435,6 +437,14 @@
 	// Source - https://stackoverflow.com/a/1026087
 	function capitalizeFirstLetter(val) {
 		return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+	}
+	async function logout(){
+		for(let i = 0; i<5; i++){
+			const res = await fetch("/api/account/logout");
+			if(res.ok)
+				break;
+		}
+		window.location = '/';
 	}
 
 </script>
