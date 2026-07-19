@@ -53,7 +53,7 @@ export async function getUserIDFromSession(env, sessionID) {
                 SELECT userID FROM Sessions WHERE sessionID=? LIMIT 1;
             `)
         .bind(sessionID)
-        .run());
+  .run());
 		if(!temp)
 			return null;
 		return temp.userID;
@@ -77,6 +77,20 @@ export async function getOAuthClientFromClientID(env, client_id) {
         .bind(client_id)
         .run()
     );
+}
+export async function deleteOAuthClientFromClientID(env, client_id){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM OAuthTokens WHERE client_id=?;
+			`)
+		.bind(client_id)
+		.run();
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM OAuthClients WHERE client_id=? LIMIT 1;
+			`)
+		.bind(client_id)
+		.run();
 }
 export async function getOAuthClientsFromUserID(env, userID){
 	const raw = await env.OTSO_DB
@@ -109,6 +123,16 @@ export async function createOAuthClient(env, client_id, client_secret_hash, redi
 			VALUES (?, ?, ?, ?, ?, ?);
 			`)
 		.bind(client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID)
+		.run();
+}
+export async function updateOAuthClient(env, client_id, redirection_URIs, client_type, name){
+	await env.OTSO_DB
+		.prepare(`
+			UPDATE OAuthClients
+			SET redirection_URIs=?, client_type=?, name=?
+			WHERE client_id=?;
+			`)
+		.bind(redirection_URIs, client_type, name, client_id)
 		.run();
 }
 // OAuthTokens
