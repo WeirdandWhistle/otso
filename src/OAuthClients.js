@@ -72,15 +72,17 @@ export async function client(request, env) {
 		}
 		if(json.client_type != 'public' && json.client_type != 'confidential')
 			return new Response("400 Bad Request. There are only two types of OAuth 2.0 Clients.", {status:400});
-		const oldClient = await db.getOAuthClientFromName(env, json.name);
-		if(oldClient)
-			return new Response("400 Bad Request. Client name is already in use.",{status:400});
 
 		const client = await db.getOAuthClientFromClientID(env, json.client_id);
 		if(!client)
 			return new Response("400 Bad Request. Client does not exist.");
 		if(client.ownerUserID != user.userID)
 			return new Response("400 Bad Request. User does not own client.",{status:401});
+		if(json.name != client.name){
+			const oldClient = await db.getOAuthClientFromName(env, json.name);
+			if(oldClient && oldClient.client_id != client.client_id)
+				return new Response("400 Bad Request. Client name is already in use.",{status:400});
+		}
 
 		await db.updateOAuthClient(env, client.client_id, json.redirect_uri, json.client_type, json.name);
 		return new Response("Sounds good!");

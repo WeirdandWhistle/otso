@@ -342,7 +342,7 @@
 		});
 		if(!res.ok){
 			const temp = await res.text();
-			alert(`We are sorry, an error occured while trying to delete '${name}' please try again. ${temp.length < 150 ? `The error is ${temp}` : ''}`);
+			alert(`We are sorry, an error occured while trying to save '${name}' please try again. ${temp.length < 150 ? `The error is ${temp}` : ''}`);
 			console.log("error",await res.text());
 			return;
 		}
