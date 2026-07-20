@@ -1,10 +1,10 @@
 import * as session from './sessions.js';
 import * as db from './databaseInteraction.js';
-import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID } from './randomData.js';
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID, generateClientSecret } from './randomData.js';
 
 export async function client(request, env) {
-	if(request.method != "POST" && request.method != "DELETE" && request.method != 'PATCH')
-			return new Response("405 Method Not Allowed. Try using the 'POST' or 'DELETE' or 'PATCH' method.",{status: 405});
+	if(request.method != "POST" && request.method != "DELETE" && request.method != 'PATCH' && request.method != 'PUT')
+			return new Response("405 Method Not Allowed. Try using the 'POST' or 'DELETE' or 'PATCH' or 'PUT method.",{status: 405});
 		const authHeader = request.headers.get("Authorization");
 		if(!authHeader)
 			return new Response("401 Unauthorized. Must use some sort of authorization.",{status:401});
@@ -36,7 +36,7 @@ export async function client(request, env) {
 				return new Response("400 Bad Request. Client name is already in use.",{status:400});
 
 			const client_id = generateSecureChars(32);
-			const client_secret = "shh-" + generateSecureChars(16) + "-" + generateSecureChars(16);
+			const client_secret = generateClientSecret();
 			const client_secret_hash = await base64SHA256(client_secret);
 
 			await db.createOAuthClient(env, client_id, client_secret_hash, json.redirect_uri, json.client_type, json.name, user.userID);
@@ -86,5 +86,23 @@ export async function client(request, env) {
 
 		await db.updateOAuthClient(env, client.client_id, json.redirect_uri, json.client_type, json.name);
 		return new Response("Sounds good!");
+	} else if(request.method == 'PUT'){
+		if(!json.client_id)
+			return new Response("400 Bad Request. Missing client_id param.",{status:400});
+
+		const client = await db.getOAuthClientFromClientID(env, json.client_id);
+		if(!client)
+			return new Response("400 Bad Request. Client does not exists",{status:400});
+		if(client.ownerUserID != user.userID)
+			return new Response("401 Unauthorized. User does not own client. Try logging into a differnt account.",{status:401});
+
+		const client_secret = generateClientSecret();
+		const client_secret_hash = await base64SHA256(client_secret);
+
+		await db.updateOAuthClientSecretHash(env, client.client_id, client_secret_hash);
+
+		return new Response(JSON.stringify({
+			client_secret: client_secret,
+		}));
 	}
 }

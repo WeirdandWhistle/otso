@@ -182,6 +182,16 @@ export async function updateOAuthClient(env, client_id, redirection_URIs, client
 		.bind(redirection_URIs, client_type, name, client_id)
 		.run();
 }
+export async function updateOAuthClientSecretHash(env, client_id, client_secret_hash){
+	await env.OTSO_DB
+		.prepare(`
+			UPDATE OAuthClients
+			SET client_secret_hash=?
+			WHERE client_id=?;
+			`)
+		.bind(client_secret_hash, client_id)
+		.run()
+}
 // OAuthTokens
 export async function createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id) {
     await env.OTSO_DB

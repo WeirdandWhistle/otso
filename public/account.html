@@ -295,7 +295,7 @@
 					<pre>Name         :</pre><input id="change-name-${i}"><br>
 					<pre>Client ID    :</pre><input id="change-client_id-${i}" disabled><br>
 					<pre>Redirect URI :</pre><input id="change-redirect_uri-${i}"><br>
-					<pre>Client Secret:</pre><button onclick="resetClientSecret(${i})" style="min-width: 16rem;">Create/Reset</button><br>
+					<pre>Client Secret:</pre><input id="change-client_secret-input-${i}" style="display: none;"><button onclick="resetClientSecret(${i})" style="min-width: 16rem;">Create/Reset</button><br>
 					<pre>Client Type  :</pre>
 					<div style="display: inline;">
 						<input id="change-type-confidential-${i}" type="radio" name="clientType-${i}" style="min-width: auto;"> <label>Confidential</label>
@@ -316,11 +316,35 @@
 			document.getElementById(`change-type-confidential-${i}`).checked = json.client_type == 'confidential' ? true : false;
 			document.getElementById(`change-type-public-${i}`).checked = json.client_type == 'public' ? true : false;
 		}
-
-
+		addCopyToClipboard();
 	}
 	async function cancelChange(index){
 		location.reload();
+	}
+	async function resetClientSecret(index){
+		const client_id = document.getElementById(`change-client_id-${index}`).value;
+		const csDisplay = document.getElementById(`change-client_secret-input-${index}`);
+
+		const go = confirm("Are you sure you want to create a new Client Secret? This will in-validate the previous one.");
+		if(!go)
+			return;
+
+		const res = await fetch("/api/oauth2/client",{
+			method: 'PUT',
+			headers: {
+				'Authorization' : 'Session'
+			},
+			body:JSON.stringify({
+				client_id: client_id,
+			}),
+		});
+		if(!res.ok){
+			alert("We encounter an error while trying to reset the client secret. Error: "+await res.text());
+			return;
+		}
+		const { client_secret } = await res.json();
+		csDisplay.value = client_secret;
+		csDisplay.style.display = 'inline';
 	}
 	async function saveChange(index){
 		const name = document.getElementById(`change-name-${index}`).value;
@@ -446,7 +470,9 @@
 		}
 		window.location = '/account';
 	}
+	function addCopyToClipboard(){
 
+	}
 </script>
 
 </body>

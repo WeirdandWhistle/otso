@@ -58,4 +58,7 @@ export const generateSecureChars = (length) => {
 	crypto.getRandomValues(buf);
 	return buf.toBase64({alphabet: "base64url", omitPadding: true}).substring(0,length-1);
 };
+export const generateClientSecret = ()=>{
+	return "shh-" + generateSecureChars(16) + "-" + generateSecureChars(16);
+}
 

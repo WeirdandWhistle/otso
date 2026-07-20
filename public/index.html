@@ -18,11 +18,14 @@
 				::backdrop{
 					background-color: #00000088;
 				}
+				input:hover{
+					background-color: red;
+				}
     </style>
 </head>
 <body>
 
-		<<h1>This is index.html</h1>
+		<h1>This is index.html</h1>
 
 		<button command="show-modal" commandfor="modal">Open seasme</button>
 		<dialog id="modal" closedby="any" style="background-color: var(--background-color); color: var(--color); width: 80%; padding: 1rem;">
@@ -30,9 +33,41 @@
 			<button command="close" commandfor="modal">Close</button>
 		</dialog>
 
-
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<input id="abc">
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		yay!
 
 		<script>
+				const input = document.getElementById("abc");
+
+				input.addEventListener('mouseover',(e)=>{
+					const rect = e.target.getBoundingClientRect();
+					//console.log(window.scrollY);
+
+					e.target.insertAdjacentHTML('afterend',`
+						<div id="copymeplease" style="color:blue; position: absolute; top: ${rect.y + window.scrollY}px; left: ${rect.x}px;">Copy?</div>
+						`);
+				});
+				input.addEventListener('mouseout',(e)=>{
+					document.getElementById('copymeplease').remove();
+				});
+
         const query = new URL(window.location).searchParams;
         const state = query.get("state");
         if(state){
