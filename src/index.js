@@ -72,7 +72,6 @@ export default {
 				stateJson = {};
 			if(redirect_from)
 				stateJson.redirect_from = redirect_from;
-			console.log("oauth/state", stateJson);
 			stateJson.auth = provider;
 			KV.put(`state.${state}`, stateJson, 60 * 3);
 			query.set("client_id", client_id);
@@ -242,14 +241,11 @@ export default {
 					return new Response("405 Method Not Allowed", {status:405});
 				const postJson = await request.json();
 				const state = postJson.state;
-				//console.log("create account json",postJson);
 
 				const OAuthState = KV.get(`state.${state}`);
 				if(!OAuthState)
 					return new Response(`{"ok":false,"error":"invalid_state"}`, { status: 400 });
 				KV.put(`state.${state}`, OAuthState, 60 * 5);
-				console.log("OAuthState createACoount", OAuthState);
-				// console.log("postJson createACoount", postJson);
 
 				let username = OAuthState.issuerInfo.username;
 				if(validUsername(postJson.username))
@@ -263,7 +259,6 @@ export default {
 				const access_token = OAuthState.issuerInfo.access_token;
 				const refresh_token = OAuthState.issuerInfo.refresh_token;
 
-				//console.log('craete accounte username',username);
 				const otherUser = await db.getUserFromUsername(env, username);
 				if(otherUser)
 					return new Response(JSON.stringify({
@@ -280,7 +275,6 @@ export default {
 				const sessionCookie = session.getCookie(sessionID);
 				headers.append("Set-Cookie", sessionCookie);
 				headers.append("Content-Type","application/json");
-				//console.log('oauthstae',OAuthState);
 
 				return new Response(JSON.stringify({
 						ok: true,
@@ -296,7 +290,6 @@ export default {
 				const authType = authHeader.split(" ")[0].toLowerCase();
 				if(authType == "session"){
 					const user = await session.getUserIfSession(request, env);
-					//console.log("user",user);
 					if(!user)
 						return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
 					const out = {};
@@ -310,7 +303,6 @@ export default {
 					for(let client_id of clientIDArray){
 						const client = await db.getOAuthClientFromClientID(env, client_id);
 						if(!client){
-							//console.log("client_id",client_id,"is null");
 							continue;
 						}
 						out.authorizedApps.push({

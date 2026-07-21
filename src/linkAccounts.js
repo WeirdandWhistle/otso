@@ -72,7 +72,7 @@ export async function linkAccounts(request, env, KV) {
 
 		const user = OAuthState.link.user;
 		const email = json.email;
-		if(email != user.email || email != OAuthState.issuerInfo.email)
+		if(email != user.email && email != OAuthState.issuerInfo.email)
 			return new Response('400 Bad Request. email is not either login option.',{status:400});
 		const username = json.username;
 		if(!validUsername(username))

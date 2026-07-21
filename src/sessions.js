@@ -24,7 +24,6 @@ export async function getUserIfSession(request, env){
 	if(!sessionID)
 		return null;
 	const userID = await db.getUserIDFromSession(env, sessionID);
-	console.log(userID);
 	if(!userID)
 		return null;
 	return await db.getUserFromUserID(env, userID);
