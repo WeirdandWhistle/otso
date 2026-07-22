@@ -77,12 +77,12 @@ export async function createUser(env, userID, username, email, issuer, id, issue
         .bind(id, issuer, issuerUsername ?? null, issuerEmail ?? null, access_token ?? null, refresh_token ?? null, userID)
         .run();
 }
-export async function addAuthorizedApp(env, userID, client_id) {
+export async function setAuthorizedApp(env, userID, authorizedApps) {
     await env.OTSO_DB
         .prepare(`
-            UPDATE Users SET authorizedApps = authorizedApps || ' ' || ? WHERE userID=?;
+            UPDATE Users SET authorizedApps=? WHERE userID=?;
             `)
-        .bind(client_id, userID)
+        .bind(authorizedApps, userID)
         .run();
 }
 

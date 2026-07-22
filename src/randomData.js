@@ -61,4 +61,9 @@ export const generateSecureChars = (length) => {
 export const generateClientSecret = ()=>{
 	return "shh-" + generateSecureChars(16) + "-" + generateSecureChars(16);
 }
-
+export const generateAccessToken = ()=>{
+	return generateSecureChars(32);
+}
+export const generateRefreshToken = ()=>{
+	return generateSecureChars(64);
+}

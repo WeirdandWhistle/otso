@@ -12,6 +12,7 @@ const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.why
 // OAuth providers to add: gitlab, facebook, bitbucket, yahoo, spotify. all of these might not be free so we'll see...
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
 import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID } from './randomData.js';
+import { parseScopes, stringifyScopes } from './parseScopes.js';
 import * as db from "./databaseInteraction.js";
 import * as KV from "./customKV.js";
 import * as session from "./sessions.js";
@@ -339,14 +340,29 @@ export default {
 
 				const requestJson = await request.json();
 				if(!requestJson.client_id)
-					return new Response("400 Bad Request. This enpoint requires a 'client_id' in the JSON.", {status: 400});
+					return new Response("400 Bad Request. This endpoint requires a 'client_id' in the JSON.", {status: 400});
 
 				const client = await db.getOAuthClientFromClientID(env, requestJson.client_id);
-
 				if(!client)
 					return new Response("400 Bad Request. Client does not exist.",{status: 400});
 
-				await db.addAuthorizedApp(env, user.userID, client.client_id);
+
+				const referer = new URL(request.headers.get("Referer"));
+				if(referer.searchParams.get("scope").includes(";"))
+					return new Respose("400 Bad Requets. Referer header scope can not contain ';'.",{status:400});
+
+				const scopes = parseScopes(user.authorizedApps);
+				console.log("scopes",scopes);
+				if(scopes.has(client.client_id)){
+					const temp = scopes.get(client.client_id);
+					referer.searchParams.get("scope").split(" ").forEach((e)=>temp.add(e));
+					scopes.set(client.client_id, temp);
+				} else {
+					scopes.set(client.client_id, new Set(referer.searchParams.get("scope").split(" ")));
+				}
+				const authorizedApps = stringifyScopes(scopes);
+
+				await db.setAuthorizedApp(env, user.userID, authorizedApps);
 				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
 			} else if(pathname.startsWith("/api/account/link")){
 				return await linker.linkAccounts(request, env, KV);
