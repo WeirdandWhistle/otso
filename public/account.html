@@ -140,6 +140,7 @@
 		<a href="#login-methods">Login Methods</a>
 		<a href="#authorized-apps">Authorized Apps</a>
 		<a href="#clients">My OAuth Clients</a>
+		<a href="#danger-zone">Danger Zone</a>
 
 		<a onclick="logout()">Logout</a>
 	</div>
@@ -151,7 +152,6 @@
 				<pre>User ID :</pre><input id="userID"><br>
 				<pre>Email   :</pre><input id="email">
 				<pre>Verifyed:</pre><input value="false"><br>
-
 		</div>
 		<div>
 			<a id="login-methods" href="#login-methods">Login Methods</a><br>
@@ -209,8 +209,11 @@
 					</div>
 				</div>
 			</div>
-
 			</div>
+		</div>
+		<div>
+			<a id="danger-zone" href="#danger-zone">Danger Zone</a><br>
+			<button>Delete Account</button>
 		</div>
 	</main>
 
@@ -247,7 +250,8 @@
 		const res = await fetch("/api/account/info",{
 			method: 'GET',
 			headers: {
-				'Authorization' : 'Session'
+				'Authorization' : 'Session',
+				'CSRFToken' : await getCSRFToken(),
 			}
 		});
 		if(!res.ok){
@@ -282,7 +286,7 @@
 				continue;
 			const key = `authorized-apps-element-${i}`;
 			const text = capitalizeFirstLetter(userInfo.authorizedApps[i].name);
-			authList.insertAdjacentHTML("beforeend",`<li><span id="${key}"><span><button onclick="revokeClient('${userInfo.authorizedApps[i].client_id}')">Revoke</button></li>`);
+			authList.insertAdjacentHTML("beforeend",`<li><b id="${key}"></b> <button onclick="revokeClient('${userInfo.authorizedApps[i].client_id}',this)">Revoke</button></li>`);
 			document.getElementById(key).innerText = text;
 		}
 
@@ -321,6 +325,24 @@
 	async function cancelChange(index){
 		location.reload();
 	}
+	async function revokeClient(client_id,child){
+		const res = await fetch("/api/account/revokeApp", {
+			method: 'POST',
+			headers:{
+				'CSRFToken': await getCSRFToken(),
+			},
+			body: JSON.stringify({
+				client_id: client_id,
+			}),
+		});
+		if(!res.ok){
+			alert("An error occur while trying to revoke access to an app." + await res.text());
+			return;
+		}
+		child.parentElement.remove();
+		const count = document.getElementById("authorized-apps-count");
+		count.innerText = Number(count.innerText) - 1;
+	}
 	async function resetClientSecret(index){
 		const client_id = document.getElementById(`change-client_id-${index}`).value;
 		const csDisplay = document.getElementById(`change-client_secret-input-display-${index}`);
@@ -333,7 +355,8 @@
 		const res = await fetch("/api/oauth2/client",{
 			method: 'PUT',
 			headers: {
-				'Authorization' : 'Session'
+				'Authorization' : 'Session',
+				'CSRFToken': await getCSRFToken(),
 			},
 			body:JSON.stringify({
 				client_id: client_id,
@@ -356,7 +379,8 @@
 		const res = await fetch("/api/oauth2/client",{
 			method: 'PATCH',
 			headers:{
-				'Authorization' : 'Session'
+				'Authorization' : 'Session',
+				'CSRFToken': await getCSRFToken(),
 			},
 			body: JSON.stringify({
 				name: name,
@@ -384,7 +408,8 @@
 		const res = await fetch("/api/oauth2/client",{
 			method: 'DELETE',
 			headers:{
-				'Authorization' : 'Session'
+				'Authorization' : 'Session',
+				'CSRFToken': await getCSRFToken(),
 			},
 			body: JSON.stringify({
 				client_id: client_id,
@@ -436,7 +461,8 @@
 		const res = await fetch("/api/oauth2/client",{
 			method: 'POST',
 			headers: {
-				'Authorization' : 'Session'
+				'Authorization' : 'Session',
+				'CSRFToken': await getCSRFToken(),
 			},
 			body: JSON.stringify({
 				name: name,
@@ -497,6 +523,16 @@
 			result += characters.charAt(Math.floor(Math.random() * charactersLength));
 		}
 		return result;
+	}
+	async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			console.log("CSRF error: ", await res.text());
+			return;
+		}
+		return await res.text();
 	}
 
 </script>

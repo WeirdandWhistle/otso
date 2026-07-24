@@ -3,7 +3,7 @@ import { validUsername, correctUsername, base64SHA256, generateRandomString, gen
 import * as db from "./databaseInteraction.js";
 import * as session from "./sessions.js";
 
-export async function linkAccounts(request, env, KV) {
+export async function linkAccounts(request, env, KV){
 	if(request.method == 'GET'){
 		const query = new URL(request.url).searchParams;
 		const typeParam = query.get("type");
@@ -13,16 +13,20 @@ export async function linkAccounts(request, env, KV) {
 			const OAuthState = KV.get(`state.${state}`);
 			if(!OAuthState)
 				return new Response("State is invalid. Basicly your session timed out.",{status:400});
-			const link = {
-				redirect_from: OAuthState.redirect_from,
-				loginMethod: OAuthState.auth,
-				issuerInfo: OAuthState.issuerInfo,
-			};
-			OAuthState.redirect_from = request.url;
-			OAuthState.link = link;
-			KV.put(`state.${state}`, OAuthState, 60 * 5);
-
 			const user = await session.getUserIfSession(request, env);
+			let link = OAuthState.link;
+			if(!link){
+				link = {
+					redirect_from: OAuthState.redirect_from,
+					loginMethod: OAuthState.auth,
+					issuerInfo: OAuthState.issuerInfo,
+				};
+				OAuthState.redirect_from = request.url;
+				OAuthState.link = link;
+				KV.put(`state.${state}`, OAuthState, 60 * 5);
+			}
+
+			//console.log("link user",user);
 			if(!user){
 				const loginURL = new URL(request.url);
 				loginURL.pathname = "/login";
@@ -59,6 +63,9 @@ export async function linkAccounts(request, env, KV) {
 			});
 		}
 	} else if(request.method == 'POST'){
+		if(await session.useCSRFToken(request, env, KV) != true)
+			return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
+
 		//console.log("post on linking accounts!");
 		const json = await request.json();
 		if(!json.username && !json.email && !json.state)
@@ -86,6 +93,7 @@ export async function linkAccounts(request, env, KV) {
 		//console.log("link accounts authenticationMethods",authenticationMethods,"1",user.authenticationMethods,"2",OAuthState.link.loginMethod);
 
 		const issuerInfo = OAuthState.link.issuerInfo;
+		console.log("issuerInfo".issuerInfo,"with",OAuthState.link.loginMethod);
 		await db.createOAuthIssuer(env, issuerInfo.id, OAuthState.link.loginMethod, issuerInfo.username, issuerInfo.email, issuerInfo.access_token, issuerInfo.refresh_token, user.userID);
 
 		await db.updateUser(env, user.userID, authenticationMethods, user.authorizedApps, email, username);

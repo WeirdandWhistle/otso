@@ -7,9 +7,9 @@
         :root{
             --login-with-width: 200px;
             --color: rgb(220, 220, 220);
-            --background-color: #1c1b22; 
+            --background-color: #1c1b22;
         }
-        
+
         body {
             background-color: var(--background-color);
             color: var(--color);
@@ -21,7 +21,7 @@
             color: var(--color);
             border: none;
             outline: none;
-            background-color: #2c2b32; 
+            background-color: #2c2b32;
             padding-left: 0.3rem;
             padding-right: 0.3rem;
             min-width: 15.5rem;
@@ -75,10 +75,10 @@
         </greeting>
 
         <hr style="width: 100%;">
-        
+
         <p>Currently logged in as <span id="username" style="font-weight: bold;"></span>.<br></p>
         <p>After choosing an option you will be redirected back to <span style="font-weight: bold;" id="redirectWebsite"></span>.</p>
-               
+
 
         <p>This would allow <span id="appName" style="font-weight: bold;"></span> to:</p>
         <ul id="list">
@@ -103,7 +103,7 @@
         const buffer = Uint8Array.fromBase64(authorizeAppData, {alphabet: "base64url"}); // creates a buffer by decoding from base64
         const data = JSON.parse(new TextDecoder().decode(buffer.buffer)); // turn Uint8Array into text and then pase the json
         const username = data.username;
-        
+
         document.getElementById("header").innerText = data.appName;
         document.getElementById("appName").innerText = data.appName;
         document.getElementById("username").innerText = username;
@@ -131,6 +131,9 @@
             const client_id = new URL(window.location).searchParams.get("client_id");
             const res = await fetch("/api/account/authorizeApp", {
                 method: 'POST',
+								headers:{
+									'CSRFToken': await getCSRFToken(),
+								},
                 body: JSON.stringify({
                     client_id: client_id,
                 }),
@@ -154,11 +157,21 @@
                 case "refresh_token":
                     return "Allows the authorized app to preform actions on your behalf with out getting you to login again.";
                 case "write:username":
-                    return "Allows the authorized app to change your username.";                
+                    return "Allows the authorized app to change your username.";
                 default:
                     "unknown property, does nothing";
             }
-        }        
+        }
+async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			console.log("CSRF error: ", await res.text());
+			return;
+		}
+		return await res.text();
+	}
     </script>
 </body>
 </html>

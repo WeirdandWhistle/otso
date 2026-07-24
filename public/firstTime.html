@@ -107,17 +107,20 @@
         const query = new URL(window.location).searchParams;
         const state = query.get("state");
         const username = query.get("username");
+				const providerUsername = query.get("provider-username");
         const email = query.get("email");
 
         document.getElementById("username").value = username;
         document.getElementById("email").value = email;
-        document.getElementById("providerUsername").value = username;
+        document.getElementById("providerUsername").value = providerUsername;
 				const createError = document.getElementById("createError");
 
         async function postAccount(){
 					createError.style.display = 'none';
             const res = await fetch("/api/account/createAccount", {
                 method: 'POST',
+								headers:{
+								},
                 body: JSON.stringify({
                     username: document.getElementById("username").value,
                     state: state,
@@ -133,7 +136,7 @@
 							window.location = json.redirect_uri;
 						} else {
 							setTimeout(()=>{
-								createError.innerText = json.error;
+								createError.innerHTML = json.error;
 								createError.style.display = 'block';
 							}, 100);
 						}
@@ -159,6 +162,17 @@
 					window.location = query.get("linkURL");
 				}
 				linkAccountManager();
+
+async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			console.log("CSRF error: ", await res.text());
+			return;
+		}
+		return await res.text();
+	}
     </script>
 </body>
 </html>

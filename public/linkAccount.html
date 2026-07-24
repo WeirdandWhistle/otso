@@ -118,6 +118,9 @@
 			console.log("/api/accout/link POST",temp);
 			const res = await fetch("/api/account/link",{
 				method: 'POST',
+				headers:{
+					'CSRFToken' : await getCSRFToken()
+				},
 				body:temp,
 			});
 
@@ -133,6 +136,16 @@
 			console.log("/api/account/link RESPONSE",outJson);
 			window.location = outJson.redirect_uri;
 		}
+async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			console.log("CSRF error: ", await res.text());
+			return;
+		}
+		return await res.text();
+	}
 	</script>
 </body>
 </html>

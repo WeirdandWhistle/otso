@@ -13,6 +13,7 @@ const userAgent = "Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.why
 import { getGithubUserEmail, getGithubUser, getGoogleUser, getSlackUser, getDiscordUser, getTwitchUser } from "./getUserData.js";
 import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID } from './randomData.js';
 import { parseScopes, stringifyScopes } from './parseScopes.js';
+import * as appControl from './appControl.js';
 import * as db from "./databaseInteraction.js";
 import * as KV from "./customKV.js";
 import * as session from "./sessions.js";
@@ -189,6 +190,7 @@ export default {
 				const sp = new URLSearchParams();
 				sp.set("state", state);
 				sp.set("username", issuerInfo.username);
+				sp.set("provider-username", issuerInfo.username);
 				sp.set("email", issuerInfo.email);
 
 				const otherUsername = await db.getUserFromUsername(env, issuerInfo.username);
@@ -215,6 +217,22 @@ export default {
 				const sessionID = await session.issueSession(env, user.userID, request.headers);
 				const sessionCookie = session.getCookie(sessionID);
 				if(OAuthState.redirect_from){
+					try {
+						const realURL = new URL(OAuthState.redirect_from);
+						return new Response(`
+						<p>You are being redirect to <a href="${realURL.toString()}">${realURL.toString()}</a>.</p>
+						<script>
+							window.location = '${realURL.toString()}';
+						</script>
+							`,{
+							headers:{
+								'Set-Cookie':sessionCookie,
+								'Content-Type': 'text/html'
+							}
+						})
+					} catch (error) {
+						console.log("url is not valid trying bad redirect",error);
+					}
 					return new Response("You are currently being redirected to: "+OAuthState.redirect_from,{
 						status: 302,
 						headers:{
@@ -264,7 +282,7 @@ export default {
 				if(otherUser)
 					return new Response(JSON.stringify({
 						ok: false,
-						error: 'Someone has already taken that username.',
+						error: `Someone has already taken that username. This you? <a href="/api/account/link?type=create-username&state=${state}">Link Account</a>`,
 					}));
 
 				const userID = generateUserID();
@@ -287,6 +305,9 @@ export default {
 			} else if(pathname.startsWith("/api/account/info")){
 				if(request.method != 'GET')
 					return new Response("405 Method Not Allowed. Try using the 'GET' method.",{status: 405});
+				if(await session.useCSRFToken(request, env, KV) != true)
+					return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
+
 				const authHeader = request.headers.get("Authorization");
 				const authType = authHeader.split(" ")[0].toLowerCase();
 				if(authType == "session"){
@@ -300,17 +321,18 @@ export default {
 					out.loginMethods = user.authenticationMethods.split(" ");
 					out.authorizedApps = [];
 
-					const clientIDArray = user.authorizedApps.split(" ");
-					for(let client_id of clientIDArray){
-						const client = await db.getOAuthClientFromClientID(env, client_id);
+					const apps = parseScopes(user.authorizedApps);
+					apps.forEach(async (value, key)=>{
+						const client = await db.getOAuthClientFromClientID(env, key);
 						if(!client){
-							continue;
+							return;
 						}
 						out.authorizedApps.push({
 							name: client.name,
 							client_id: client.client_id,
+							scopes: Array.from(value),
 						});
-					}
+					});
 					out.ownedClients = [];
 					const ownedClients = await db.getOAuthClientsFromUserID(env, user.userID);
 					//console.log(ownedClients);
@@ -331,49 +353,21 @@ export default {
 					return new Response("401 Unauthorized. Unknown auth-scheme. Try 'Bearer' or 'Session'.", {status: 401});
 				}
 			} else if(pathname.startsWith("/api/account/authorizeApp")){
-				if(request.method != 'POST')
-					return new Response("405 Method Not Allowed. Try using 'POST'", {status:405});
-
-				const user = await session.getUserIfSession(request, env);
-				if(!user)
-					return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
-
-				const requestJson = await request.json();
-				if(!requestJson.client_id)
-					return new Response("400 Bad Request. This endpoint requires a 'client_id' in the JSON.", {status: 400});
-
-				const client = await db.getOAuthClientFromClientID(env, requestJson.client_id);
-				if(!client)
-					return new Response("400 Bad Request. Client does not exist.",{status: 400});
-
-
-				const referer = new URL(request.headers.get("Referer"));
-				if(referer.searchParams.get("scope").includes(";"))
-					return new Respose("400 Bad Requets. Referer header scope can not contain ';'.",{status:400});
-
-				const scopes = parseScopes(user.authorizedApps);
-				console.log("scopes",scopes);
-				if(scopes.has(client.client_id)){
-					const temp = scopes.get(client.client_id);
-					referer.searchParams.get("scope").split(" ").forEach((e)=>temp.add(e));
-					scopes.set(client.client_id, temp);
-				} else {
-					scopes.set(client.client_id, new Set(referer.searchParams.get("scope").split(" ")));
-				}
-				const authorizedApps = stringifyScopes(scopes);
-
-				await db.setAuthorizedApp(env, user.userID, authorizedApps);
-				return new Response(`{"ok":true,"message":"App has been Authorized."}`);
+				return await appControl.authorizeApp(request, env, KV);
+			} else if(pathname.startsWith("/api/account/revokeApp")){
+				return await appControl.revokeApp(request, env, KV);
 			} else if(pathname.startsWith("/api/account/link")){
 				return await linker.linkAccounts(request, env, KV);
 			} else if(pathname.startsWith("/api/account/logout")){
-				return await session.clearSession(request, env);
+				return await session.clearSession(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/client")){
-				return await OAuthClients.client(request, env);
+				return await OAuthClients.client(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/authorize")){
 				return await OAuthProvider.authorize(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/token")){
 				return await OAuthProvider.token(request, env, KV);
+			} else if(pathname.startsWith("/api/CSRFToken")){
+				return await session.CSRFTokenEndpoint(request, env, KV);
 			}
 		}
 

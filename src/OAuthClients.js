@@ -2,9 +2,12 @@ import * as session from './sessions.js';
 import * as db from './databaseInteraction.js';
 import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateUserID, generateClientSecret } from './randomData.js';
 
-export async function client(request, env) {
+export async function client(request, env, KV) {
 	if(request.method != "POST" && request.method != "DELETE" && request.method != 'PATCH' && request.method != 'PUT')
 			return new Response("405 Method Not Allowed. Try using the 'POST' or 'DELETE' or 'PATCH' or 'PUT method.",{status: 405});
+	if(await session.useCSRFToken(request, env, KV) != true)
+		return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
+
 		const authHeader = request.headers.get("Authorization");
 		if(!authHeader)
 			return new Response("401 Unauthorized. Must use some sort of authorization.",{status:401});

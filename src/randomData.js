@@ -6,7 +6,7 @@ export const base64SHA256 = async (text) => {
 export const generateRandomString = (length) => {
   let result = '';
   const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.';
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
   for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
@@ -22,6 +22,8 @@ export const usernameMaxLength = 100;
 export const validUsername = (username) => {
 	if(username.length <= 0 || username.length > usernameMaxLength)
 		return false;
+	if(username != username.trim())
+			return false;
 	for(let i = 0; i<username.length;i++){
 		if(!allowedChars.includes(username.charAt(i))){
 			return false;
