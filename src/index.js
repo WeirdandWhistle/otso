@@ -282,7 +282,7 @@ export default {
 				if(otherUser)
 					return new Response(JSON.stringify({
 						ok: false,
-						error: `Someone has already taken that username. This you? <a href="/api/account/link?type=create-username&state=${state}">Link Account</a>`,
+						error: `Someone has already taken that username. This you? <a href="/api/account/link?type=create-username&state=${state}">Link Account</a>.`,
 					}));
 
 				const userID = generateUserID();
