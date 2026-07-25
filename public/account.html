@@ -10,6 +10,7 @@
 				--login-with-width: 200px;
 				--color: rgb(220, 220, 220);
 				--background-color: #1c1b22;
+				--greyed-out-border: #3d444d;
 		}
 
 		body{
@@ -126,6 +127,49 @@
 		.close-modal:hover{
 			transform: rotate(-90deg);
 		}
+		.fa2{
+			background-color: #2c2b32;
+			border: 1px var(--color) solid;
+			border-radius: 5px;
+			aspect-ratio: 10/17;
+			min-width: 0;
+			width: 2rem;
+			font-size: 2rem;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			text-align: center;
+		}
+		.fa2 input{
+			border-radius: 5px;
+			aspect-ratio: 10/17;
+			min-width: 0;
+			width: 1rem;
+			font-size: 2rem;
+			text-align: center;
+		}
+		.deleteButton{
+			min-width: 0;
+			border-radius: 7px;
+			color: #ff0000b8;
+			border: 1px var(--greyed-out-border) solid;
+		}
+		.deleteButton:hover{
+			color: var(--color);
+			background-color: #ff0000aa;
+			border: none;
+			box-shadow: none;
+		}
+		.deleteButton:disabled{
+			color: var(--greyed-out-border);
+			cursor: not-allowed;
+		}
+		.deleteButton:disabled:hover{
+			background-color: #2c2b32;
+			border: 1px var(--greyed-out-border) solid;
+			box-shadow: none;
+			transform: none;
+		}
 
     </style>
 
@@ -213,11 +257,132 @@
 		</div>
 		<div>
 			<a id="danger-zone" href="#danger-zone">Danger Zone</a><br>
-			<button>Delete Account</button>
+			<button id="deleteAccountButton">Delete Account</button>
+			<div id="deleteAccountModal" class="modal">
+				<div class="modal-content">
+					<span id="closeDeleteAccountModal" class="close-modal">&times;</span>
+					<h1>Delete Account</h1>
+					<span>Are you sure? This is <b>permanent</b>, <b>forever</b>, and <b>can NOT be undone</b>.</span>
+					<p style="display: flex; flex-direction: row; justify-content: center;"><span>Please enter <input id="deleteAccountInput" style="min-width: 0; width: 5rem;" disabled>.<span></p>
+					<div id="main-2fa" style="display: flex; flex-direction: row; justify-content: center; gap: 0.4rem;">
+						<input type="2fa" class="fa2" id="delA0" maxlength="1">
+						<input type="2fa" class="fa2" id="delA1" maxlength="1">
+						<input type="2fa" class="fa2" id="delA2" maxlength="1">
+						<span style="font-weight: bold; font-size: 2rem;">-</span>
+						<input type="2fa" class="fa2" id="delA3" maxlength="1">
+						<input type="2fa" class="fa2" id="delA4" maxlength="1">
+						<input type="2fa" class="fa2" id="delA5" maxlength="1">
+					</div>
+					<br>
+					<div style="display: flex; justify-content: center; gap: 1rem;">
+						<button>Cancel</button>
+						<button id="deleteAccountButtonFinal" class="deleteButton" disabled>Delete</button>
+					</div>
+				</div>
+			</div>
 		</div>
 	</main>
 
 	<script>
+	let deleteKey = 'abc123';
+	let deleteLetter = '0';
+	let deleteNoncePromise = null;
+	const fa2 = document.getElementsByClassName('fa2');
+	const main2FA = document.getElementById('main-2fa');
+	const deleteAccountButtonFinal = document.getElementById('deleteAccountButtonFinal');
+	for(let i = 0; i < fa2.length; i++){
+		const element = fa2[i];
+		element.addEventListener('input', (event)=>{
+			if(event.target.value.length >= 1){
+				if(i+1 < fa2.length)
+					fa2[i+1].focus();
+			}
+			checkToEnableDeleteButton();
+		});
+		element.addEventListener('keydown',(e)=>{
+			if(e.keyCode == 37){
+				if(i-1 >= 0)
+					fa2[i-1].focus();
+			} else if(e.keyCode == 39){
+				if(i+1 < fa2.length)
+					fa2[i+1].focus();
+			} else if(e.key == "Backspace" && i-1 >= 0){
+				setTimeout(function(){
+					fa2[i-1].focus();
+					const that = fa2[i-1];
+					const temp = that.value;
+					that.value = '';
+					that.value = temp;
+					that.setSelectionRange(that.value.length, that.value.length);
+				}, 0);
+			}
+			checkToEnableDeleteButton();
+		});
+	}
+	main2FA.addEventListener('paste', (e)=>{
+		e.preventDefault();
+		const pasteData = e.clipboardData.getData('text').trim().replace('-','').split('');
+		for(let i = 0; i<fa2.length;i++){
+			const element = fa2[i];
+			if(pasteData[i])
+				element.value = pasteData[i];
+		}
+		fa2[fa2.length-1].focus();
+		checkToEnableDeleteButton();
+	});
+	function checkToEnableDeleteButton(){
+		let out = '';
+		for(const e of fa2){
+			e.value = e.value.toUpperCase();
+			out += e.value;
+		}
+		if(out == deleteKey){
+			deleteAccountButtonFinal.disabled = false;
+			deleteAccountButtonFinal.onclick = sendFinalDeleteMessage;
+		} else {
+			deleteAccountButtonFinal.disabled = true;
+			deleteAccountButtonFinal.onclick = checkToEnableDeleteButton;
+		}
+	}
+
+	const deleteAccountButton = document.getElementById("deleteAccountButton");
+	const deleteAccountModal = document.getElementById("deleteAccountModal");
+	const closeDeleteAccountModalButton = document.getElementById("closeDeleteAccountModal");
+	function closeDeleteAccountModal(){
+		deleteAccountModal.style.display = 'none';
+		}
+	async function openDeleteAccountModal(){
+		for(let i = 0; i<fa2.length;i++){
+			fa2[i].value = '';
+		}
+		deleteAccountModal.style.display = 'block';
+		window.onclick = (event)=>{
+			if(event.target == deleteAccountModal)
+				closeDeleteAccountModal();
+		}
+		const chall = generateRandomString(3).toUpperCase();
+		const letter = generateRandomString(1).toUpperCase();
+		deleteLetter = letter;
+		fetch(`/api/account/delete?chall=${chall}&letter=${letter}`,{
+			headers:{
+				'CSRFToken': await getCSRFToken(),
+			}
+		})
+			.then((res)=>{
+				if(res.ok)
+					return res.text();
+				throw new Error("shit");
+			}).then((enge)=>{
+				deleteKey = `${chall}${enge}`.toUpperCase();
+				document.getElementById('deleteAccountInput').value = `${deleteKey.slice(0,3)}-${deleteKey.slice(3,6)}`;
+				deleteNoncePromise = createDeletePromise(deleteKey);
+			});
+	}
+	deleteAccountButton.onclick = openDeleteAccountModal;
+	closeDeleteAccountModalButton.onclick = closeDeleteAccountModal;
+
+
+
 	const navBar = document.getElementById("navBar");
 	function openNav(){
 			navBar.style.width = "300px";
@@ -233,18 +398,44 @@
 	const createClientButton = document.getElementById("createClient");
 	const createClientModal = document.getElementById("createClientModal");
 	const closeClientButton = document.getElementById("closeClientModal");
+	async function sendFinalDeleteMessage(){
+		document.body.style.cursor = 'wait';
+		const nonce = await deleteNoncePromise;
+		const res = await fetch("/api/account/delete",{
+			method:'DELETE',
+			headers:{
+				'CSRFToken': await getCSRFToken(),
+			},
+			body: nonce,
+		});
+		if(!res.ok)
+			alert("we are sorry. but that did not work.");
+		window.location = window.location;
+	}
+	async function createDeletePromise(key){
+		let nonce = -1;
+		let hash = '';
+		const l = deleteLetter;
+		while(!hash.startsWith(`${l}${l}${l}`)){
+			nonce++;
+			hash = await base64SHA256(`${key}-${nonce}`);
+		}
+		console.log('nonce',nonce,'hash',hash);
+		return nonce;
+	}
 	function closeClientModal(){
 		createClientModal.style.display = 'none';
 	}
 	function openClientModal(){
 		createClientModal.style.display = 'block';
+		window.onclick = (event)=>{
+			if(event.target == createClientModal)
+				closeClientModal();
+		};
 	}
 	createClientButton.onclick = openClientModal;
 	closeClientButton.onclick = closeClientModal;
-	window.onclick = (event)=>{
-		if(event.target == createClientModal)
-			closeClientModal();
-	};
+
 
 	async function init(){
 		const res = await fetch("/api/account/info",{
@@ -499,7 +690,7 @@
 	}
 	function addCopyToClipboard(){
 		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
-		document.querySelectorAll('input:not([type="radio"])').forEach((node)=>{
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
 			let id = node.id;
 			if(!id){
 				id=makeid(20);
@@ -534,6 +725,21 @@
 		}
 		return await res.text();
 	}
+	const base64SHA256 = async (text) => {
+		let buffer = new TextEncoder().encode(text).buffer;
+		buffer = await crypto.subtle.digest("SHA-256", buffer);
+		return new Uint8Array(buffer).toBase64({alphabet: "base64url", omitPadding: true});
+	}
+	const generateRandomString = (length) => {
+		let result = '';
+		const characters =
+			'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		const charactersLength = characters.length;
+		for (let i = 0; i < length; i++) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
+	};
 
 </script>
 

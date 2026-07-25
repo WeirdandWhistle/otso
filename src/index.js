@@ -20,6 +20,7 @@ import * as session from "./sessions.js";
 import * as OAuthProvider from "./OAuthProviderAPI.js";
 import * as OAuthClients from './OAuthClients.js';
 import * as linker from './linkAccounts.js';
+import * as userControl from './userControl.js';
 
 export default {
 	async fetch(request, env, ctx) {
@@ -360,6 +361,8 @@ export default {
 				return await linker.linkAccounts(request, env, KV);
 			} else if(pathname.startsWith("/api/account/logout")){
 				return await session.clearSession(request, env, KV);
+			} else if(pathname.startsWith("/api/account/delete")){
+				return await userControl.deleteAccount(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/client")){
 				return await OAuthClients.client(request, env, KV);
 			} else if(pathname.startsWith("/api/oauth2/authorize")){

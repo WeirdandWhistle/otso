@@ -29,14 +29,12 @@ export function getSessionID(request){
 // if request has valid session then get the user profile ELSE null
 export async function getUserIfSession(request, env){
 	const sessionID = getSessionID(request);
-	console.log('sessions the independent. sessionID', sessionID);
 	if(!sessionID)
 		return null;
 	const userID = await db.getUserIDFromSession(env, sessionID);
 	if(!userID)
 		return null;
 	const temp = await db.getUserFromUserID(env, userID);
-	console.log("sessions 38; sessionID:",sessionID,"userID",userID);
 	return temp;
 }
 export async function clearSession(request, env){
