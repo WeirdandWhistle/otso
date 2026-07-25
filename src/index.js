@@ -232,7 +232,7 @@ export default {
 							}
 						})
 					} catch (error) {
-						console.log("url is not valid trying bad redirect",error);
+						//console.log("url is not valid trying bad redirect",error);
 					}
 					return new Response("You are currently being redirected to: "+OAuthState.redirect_from,{
 						status: 302,
@@ -243,9 +243,10 @@ export default {
 					});
 				} else {
 					KV.remove(state);
-					return new Response(JSON.stringify(issuerInfo),{
+					return new Response(null,{
+						status:302,
 						headers:{
-							'Content-Type' : 'application/json'
+							'Location' : '/account'
 						}
 					});
 				}

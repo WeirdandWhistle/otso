@@ -410,7 +410,21 @@
 		});
 		if(!res.ok)
 			alert("we are sorry. but that did not work.");
-		window.location = window.location;
+		else
+			boom(document);
+	}
+	async function boom(node){
+		console.log("start iteration", node);
+		const nodes = node.childNodes;
+		for(let i = 0; i<nodes.length; i++){
+			await new Promise(res=>setTimeout(res, 100));
+			if(!nodes[i])
+				continue;
+			if(nodes[i].childNodes.length > 0)
+				await boom(nodes[i]);
+		}
+		console.log("end iteration.");
+		node.remove();
 	}
 	async function createDeletePromise(key){
 		let nonce = -1;

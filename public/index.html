@@ -14,72 +14,39 @@
         body{
             background-color: var(--background-color);
             color: var(--color);
+					display: flex;
+					flex-direction: column;
+					align-items: center;
         }
-				::backdrop{
-					background-color: #00000088;
-				}
-				input:hover{
-					background-color: red;
-				}
+        card{
+            --size: 2.5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            position: absolute;
+            border: 1px var(--color) solid;
+            padding: 0.5rem;
+						width: min(80rem, 100%);
+        }
     </style>
 </head>
 <body>
+	<card>
+		<h1>Otso</h1>
+		<span>The last authentication system you will ever need.</span>
+		<hr style="width: 100%;">
+		<p>
+		Otso interfaces with almost every free OAuth 2.0 provider allowing your users to authenticate with their prefrered system.
+		The project is entrirly open source, and runs on <a href="https://github.com/cloudflare/workerd">workerd</a> allowing it to be both self-hosted and deployed with cloudflare.
+		</p>
+		<h3>Ready to get started?</h3>
+		<a href="/login">Log In / Sign Up</a>
 
-		<h1>This is index.html</h1>
+	</card>
 
-		<button command="show-modal" commandfor="modal">Open seasme</button>
-		<dialog id="modal" closedby="any" style="background-color: var(--background-color); color: var(--color); width: 80%; padding: 1rem;">
-			<p>This was opened without js?!?!</p>
-			<button command="close" commandfor="modal">Close</button>
-		</dialog>
+	<script>
 
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<input id="abc">
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		<br>
-		yay!
-
-		<script>
-				const input = document.getElementById("abc");
-
-				input.addEventListener('mouseover',(e)=>{
-					const rect = e.target.getBoundingClientRect();
-					//console.log(window.scrollY);
-
-					e.target.insertAdjacentHTML('afterend',`
-						<div id="copymeplease" style="color:blue; position: absolute; top: ${rect.y + window.scrollY}px; left: ${rect.x}px;">Copy?</div>
-						`);
-				});
-				input.addEventListener('mouseout',(e)=>{
-					document.getElementById('copymeplease').remove();
-				});
-
-        const query = new URL(window.location).searchParams;
-        const state = query.get("state");
-        if(state){
-            for(let array = document.querySelectorAll("a"), i = 0; i<array.length; i++){
-                console.log(array[i]);
-                const linkTo = array[i].attributes.href.nodeValue;
-                if(!linkTo.startsWith("/oauth/")){
-                    continue;
-                }
-                array[i].attributes.href.nodeValue += `?state=${state}`;
-            }
-        }
-    </script>
+  </script>
 </body>
 </html>

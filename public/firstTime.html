@@ -133,7 +133,10 @@
             const json = await res.json();
 					console.log(json);
 						if(json.ok){
-							window.location = json.redirect_uri;
+							if(json.redirect_uri)
+								window.location = json.redirect_uri;
+							else
+								window.location = '/account';
 						} else {
 							setTimeout(()=>{
 								createError.innerHTML = json.error;

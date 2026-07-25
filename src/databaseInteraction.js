@@ -102,6 +102,7 @@ export async function deleteUser(env, userID){
 	await env.OTSO_DB.prepare(`DELETE FROM OAuthIssuers WHERE userID=?;`).bind(userID).run();
 	await env.OTSO_DB.prepare(`DELETE FROM OAuthClients WHERE ownerUserID=?;`).bind(userID).run();
 	await env.OTSO_DB.prepare(`DELETE FROM OAuthTokens WHERE userID=?;`).bind(userID).run();
+	await env.OTSO_DB.prepare(`DELETE FROM Users WHERE userID=?;`).bind(userID).run();
 }
 export async function createSession(env, sessionID, userID, sessionData){
     await env.OTSO_DB
