@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS Users (
     email TEXT,
     username TEXT NOT NULL
 );
-INSERT INTO Users (userID, username) VALUES ('userid', 'username');
 
 DROP TABLE IF EXISTS Sessions;
 CREATE TABLE IF NOT EXISTS Sessions (
@@ -19,7 +18,6 @@ CREATE TABLE IF NOT EXISTS Sessions (
     userID TEXT NOT NULL,
     FOREIGN KEY (userID) REFERENCES Users(userID)
 );
-INSERT INTO Sessions (userID, sessionID) VALUES ('userid', 's');
 
 DROP TABLE IF EXISTS OAuthIssuers;
 CREATE TABLE IF NOT EXISTS OAuthIssuers (
@@ -33,7 +31,6 @@ CREATE TABLE IF NOT EXISTS OAuthIssuers (
     FOREIGN KEY (userID) REFERENCES Users(userID)
 );
 
--- OAuth provider (Otso) tables (eg.. clients, access_token, etc...)
 DROP TABLE IF EXISTS OAuthClients;
 CREATE TABLE IF NOT EXISTS OAuthClients (
     client_id TEXT NOT NULL PRIMARY KEY,
@@ -44,7 +41,6 @@ CREATE TABLE IF NOT EXISTS OAuthClients (
     ownerUserID TEXT NOT NULL,
     FOREIGN KEY (ownerUserID) REFERENCES Users(userID)
 );
-INSERT INTO OAuthClients (ownerUserID, client_id, client_type, name, redirection_URIs) VALUES ('userid', 'client_id', 'public', 'app', 'https://github.com');
 
 DROP TABLE IF EXISTS OAuthTokens;
 CREATE TABLE IF NOT EXISTS OAuthTokens (

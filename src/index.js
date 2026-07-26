@@ -27,7 +27,7 @@ export default {
 	async fetch(request, env, ctx) {
 		const pathname = new URL(request.url).pathname;
 
-		const redirect_uri = "http://localhost:8787/callback";
+		const redirect_uri = new URL(request.url).origin + "/callback";
 
 		if(pathname.startsWith("/oauth/")){
 			let forward_url;
