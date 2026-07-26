@@ -21,12 +21,6 @@ CREATE TABLE IF NOT EXISTS Sessions (
 );
 INSERT INTO Sessions (userID, sessionID) VALUES ('userid', 's');
 
-DROP TABLE IF EXISTS OAuthState;
--- CREATE TABLE IF NOT EXISTS OAuthState ( -- not needed
---     stateID TEXT PRIMARY KEY,
---     stateData TEXT
--- );
-
 DROP TABLE IF EXISTS OAuthIssuers;
 CREATE TABLE IF NOT EXISTS OAuthIssuers (
     ID TEXT NOT NULL PRIMARY KEY,

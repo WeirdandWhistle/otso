@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 export const base64SHA256 = async (text) => {
 	let buffer = new TextEncoder().encode(text).buffer;
 	buffer = await crypto.subtle.digest("SHA-256", buffer);
@@ -68,4 +70,9 @@ export const generateAccessToken = ()=>{
 }
 export const generateRefreshToken = ()=>{
 	return generateSecureChars(64);
+}
+export const safeCompareString = (a, b)=>{
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	return crypto.timingSafeEqual(bufA, bufB);
 }

@@ -1,6 +1,5 @@
 import * as db from "./databaseInteraction.js"
-import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars } from './randomData.js';
-import crypto from 'crypto';
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, safeCompareString } from './randomData.js';
 
 export async function issueSession(env, userID, headers){
 	const sessionID = generateSecureChars(64);
@@ -75,9 +74,7 @@ export async function useCSRFToken(request, env, KV){
 	const user = await getUserIfSession(request, env);
 	if(!user)
 		return false;
-	const bufA = Buffer.from(data);
-	const bufB = Buffer.from(`${token}.${user.userID}.${sessionID}`)
-	if(!crypto.timingSafeEqual(bufA, bufB))
+	if(!safeCompareString(data, `${token}.${user.userID}.${sessionID}`))
 		return false;
 	return true;
 	}
@@ -108,5 +105,13 @@ export async function CSRFTokenEndpoint(request, env, KV){
 	const token = await createCSRFToken(KV, user.userID, sessionID);
 
 	return new Response(token);
+}
+export async function getScopesFromAccessToken(request, env){
+	if(request.headers.get('Authorization').split(" ").length < 2) return null;
+	const access_token = request.headers.get('Authorization').split(" ")[1];
+	const tokens = await db.getOAuthTokenFromAccessToken(env, access_token);
+	if(!tokens) return null;
+	if(tokens.expires <= Date.now()/1000) return null;
+	return tokens;
 }
 

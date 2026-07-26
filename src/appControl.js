@@ -60,5 +60,6 @@ export async function revokeApp(request, env, KV){
 	scopes.delete(client.client_id);
 
 	await db.setAuthorizedApp(env, user.userID, stringifyScopes(scopes));
+	await db.deleteOAuthTokensFromUserID(env, user.userID);
 	return new Response(`{"ok":true,"message":"App Authorization has been revoked."}`);
 }

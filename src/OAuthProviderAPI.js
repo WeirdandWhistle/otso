@@ -1,6 +1,6 @@
 import * as db from "./databaseInteraction.js";
 import { getUserIfSession } from "./sessions.js";
-import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateAccessToken, generateRefreshToken } from './randomData.js';
+import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateAccessToken, generateRefreshToken, safeCompareString } from './randomData.js';
 import { parseScopes, stringifyScopes } from './parseScopes.js';
 
 // OAuth 2.0 endpoints
@@ -21,6 +21,10 @@ export async function authorize(request, env, KV){
     const OAuthClient = await db.getOAuthClientFromClientID(env, client_id);
     if(!OAuthClient)
         return new Response(`{"error":"invalid_request","error_description":"404 Client does not exist. Check your client_id field."}`, {status: 404});
+		if(OAuthClient.client_type == 'public' &&  response_type == 'code')
+        return new Response(`{"error":"invalid_request","error_description":"400 A public client can not request a code. It must user the implict/token protocol."}`, {status: 400});
+		if(OAuthClient.client_type == 'confidential' &&  response_type == 'token')
+        return new Response(`{"error":"invalid_request","error_description":"400 A confidential client can not request a token. It must use code protocol."}`, {status: 400});
 
     let redirect_uri = query.get("redirect_uri");
     let verifiyedRedirectURI = false;
@@ -182,18 +186,19 @@ export async function token(request, env, KV){
     let client_id;
     let client_secret;
 
-    if(request.header.get("Authorization")){
+    if(request.headers.get("Authorization")){
         const authArray = request.header.get("Authorization").split(" ");
         const tokenType = authArray[0];
-        if(tokenType.toLowerCase != 'basic')
+        if(tokenType.toLowerCase() != 'basic')
             return new Response(`{"error":"invalid_client","error_description":"When using HTTP Authorization you MUST use the 'Basic' token type. (eg, 'Basic 123xyz')) as defined Here: https://datatracker.ietf.org/doc/html/rfc2617#section-2"}`,{status: 401});
         const decodedBase64Array = window.atob(authArray[1]).split(":");
         client_id = decodedBase64Array[0];
         client_secret = decodedBase64Array[1];
-    } else {
+		} else {
         client_id = query.get("client_id");
         client_secret = query.get("client_secret");
     }
+	const client_secret_hash = await base64SHA256(client_secret);
 
     const response_type = query.get("response_type");
     if(!client_id){
@@ -202,14 +207,20 @@ export async function token(request, env, KV){
         return new Response(`{"error":"invalid_client","error_description":"client_secret must be present. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
     } if(client_id != stateJson.client.client_id){
         return new Response(`{"error":"invalid_client","error_description":"client_id used to gain 'code' must be the same as the one exchangeing for an access_token."}`, {status: 400});
-    } if(!crypto.timingSafeEqual(client_secret, stateJson.client.client_secret)){
+    } if(!safeCompareString(client_secret_hash, stateJson.client.client_secret_hash)){
         return new Response(`{"error":"invalid_client","error_description":"client_secret is incorrect"}`, {status: 401});
-    } if(!response_type){
-        return new Response(`{"error":"invalid_request","error_description":"response_type must be present. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
     }
 
     const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, stateJson.scopes, 3600, true);
-    return new Response(JSON.stringify(tokens));
+		const out = new URLSearchParams();
+		for(const key in tokens){
+			out.set(key, tokens[key]);
+		}
+    return new Response(out.toString(), {
+			headers:{
+				'Access-Control-Allow-Origin':'*',
+			}
+		});
 }
 async function issueAccessToken(env, userID, client_id, scopes, ttl, issuerefresh_token=true){
 	const access_token = generateAccessToken();

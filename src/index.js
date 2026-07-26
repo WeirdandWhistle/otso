@@ -21,6 +21,7 @@ import * as OAuthProvider from "./OAuthProviderAPI.js";
 import * as OAuthClients from './OAuthClients.js';
 import * as linker from './linkAccounts.js';
 import * as userControl from './userControl.js';
+import * as userInfo from './userInfo.js';
 
 export default {
 	async fetch(request, env, ctx) {
@@ -103,6 +104,7 @@ export default {
 			// const KVstateTemp = await env.OAUTH_STATE.get(state);
 			let OAuthState = KV.get(`state.${state}`);
 			if(!OAuthState)
+
 				return new Response("Invalid State", {status: 400});
 
 			const body = new URLSearchParams();
@@ -152,6 +154,7 @@ export default {
 
 			switch(res.headers.get("content-type").split(";")[0]){
 				case "application/x-www-form-urlencoded":
+
 					const s = new URLSearchParams(resText);
 					s.forEach((value, key) => tokens[key] = value);
 					break;
@@ -269,6 +272,7 @@ export default {
 				KV.put(`state.${state}`, OAuthState, 60 * 5);
 
 				let username = OAuthState.issuerInfo.username;
+
 				if(validUsername(postJson.username))
 					username = postJson.username;
 				if(!validUsername(username))
@@ -305,55 +309,7 @@ export default {
 					headers: headers,
 				});
 			} else if(pathname.startsWith("/api/account/info")){
-				if(request.method != 'GET')
-					return new Response("405 Method Not Allowed. Try using the 'GET' method.",{status: 405});
-				if(await session.useCSRFToken(request, env, KV) != true)
-					return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
-
-				const authHeader = request.headers.get("Authorization");
-				const authType = authHeader.split(" ")[0].toLowerCase();
-				if(authType == "session"){
-					const user = await session.getUserIfSession(request, env);
-					if(!user)
-						return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
-					const out = {};
-					out.username = user.username;
-					out.userID = user.userID;
-					out.email = user.email;
-					out.loginMethods = user.authenticationMethods.split(" ");
-					out.authorizedApps = [];
-
-					const apps = parseScopes(user.authorizedApps);
-					apps.forEach(async (value, key)=>{
-						const client = await db.getOAuthClientFromClientID(env, key);
-						if(!client){
-							return;
-						}
-						out.authorizedApps.push({
-							name: client.name,
-							client_id: client.client_id,
-							scopes: Array.from(value),
-						});
-					});
-					out.ownedClients = [];
-					const ownedClients = await db.getOAuthClientsFromUserID(env, user.userID);
-					//console.log(ownedClients);
-					if(ownedClients){
-						for(const client of ownedClients){
-							out.ownedClients.push({
-								name: client.name,
-								client_id: client.client_id,
-								redirect_uri: client.redirection_URIs.split(" "),
-								client_type: client.client_type,
-							});
-						}
-					}
-					return new Response(JSON.stringify(out));
-				} else if(authType == "bearer"){
-					return new Response("501 Not Implemented. Meant for access_tokens, but that doesnt exist right now.", {status: 502});
-				} else {
-					return new Response("401 Unauthorized. Unknown auth-scheme. Try 'Bearer' or 'Session'.", {status: 401});
-				}
+				return await userInfo.info(request, env, KV);
 			} else if(pathname.startsWith("/api/account/authorizeApp")){
 				return await appControl.authorizeApp(request, env, KV);
 			} else if(pathname.startsWith("/api/account/revokeApp")){

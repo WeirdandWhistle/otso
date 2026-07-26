@@ -209,3 +209,28 @@ export async function createOAuthToken(env, access_token, expires, scopes, refre
         .bind(access_token, expires, scopes, refresh_token, userID, client_id)
         .run()
 }
+export async function getOAuthTokenFromAccessToken(env, access_token){
+	return returnResults(await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM OAuthTokens WHERE access_token=?;
+			`)
+		.bind(access_token)
+		.run()
+	);
+}
+export async function deleteOAuthTokensFromAccessToken(env, access_token){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM OAuthTokens WHERE access_token=?;
+			`)
+		.bind(access_token)
+		.run();
+}
+export async function deleteOAuthTokensFromUserID(env, userID){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM OAuthTokens WHERE userID=?;
+			`)
+		.bind(userID)
+		.run();
+}

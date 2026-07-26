@@ -150,14 +150,8 @@
                     return "See your email address.";
                 case "id":
                     return "See your Internal userID, which is not a secret.";
-                case "pfp":
-                    return "See your profile picture";
-                case "name":
+                case "username":
                     return `See your username. (${username})`;
-                case "refresh_token":
-                    return "Allows the authorized app to preform actions on your behalf with out getting you to login again.";
-                case "write:username":
-                    return "Allows the authorized app to change your username.";
                 default:
                     "unknown property, does nothing";
             }
