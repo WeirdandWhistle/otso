@@ -91,8 +91,7 @@ export async function CSRFTokenEndpoint(request, env, KV){
 	if(request.method != 'PUT')
 		return new Response("405 Method Not Allowed.",{status:405});
 	const referer = new URL(request.headers.get('Referer'));
-	console.log(new URL(env.HOST).origin,'and',referer.origin);
-	if(new URL(env.HOST).origin != referer.origin)
+	if(new URL(request.url).origin != referer.origin)
 		return new Response("401 Unauthorized.",{status:401});
 
 	const sessionID = getSessionID(request);
