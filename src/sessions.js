@@ -1,9 +1,18 @@
 import * as db from "./databaseInteraction.js"
 import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, safeCompareString } from './randomData.js';
+var platform = require('platform');
 
 export async function issueSession(env, userID, headers){
 	const sessionID = generateSecureChars(64);
-	const sessionData = "{}";
+	
+	const info = platform.parse(headers.get("User-Agent"));
+	const sessionData = JSON.stringify({
+		browser: info.name,
+		browserVersion: info.version,
+		os: info.os,
+		ip: headers.get("CF-Connecting-IP"),
+	});
+
 	await db.createSession(env, sessionID, userID, sessionData);
 	return sessionID;
 }
