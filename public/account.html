@@ -7,15 +7,15 @@
 	<style>
 
 		:root{
-				--login-with-width: 200px;
-				--color: rgb(220, 220, 220);
-				--background-color: #1c1b22;
-				--greyed-out-border: #3d444d;
+			--login-with-width: 200px;
+			--color: rgb(220, 220, 220);
+			--background-color: #1c1b22;
+			--greyed-out-border: #3d444d;
 		}
 
 		body{
-				background-color: var(--background-color);
-				color: var(--color);
+			background-color: var(--background-color);
+			color: var(--color);
 		}
 		pre{
 			display: inline;
@@ -183,6 +183,7 @@
 		<a href="#account-details">Account Details</a>
 		<a href="#login-methods">Login Methods</a>
 		<a href="#authorized-apps">Authorized Apps</a>
+		<a href="#sessions">Sessions</a>
 		<a href="#clients">My OAuth Clients</a>
 		<a href="#danger-zone">Danger Zone</a>
 
@@ -209,6 +210,10 @@
 			<ul id="authorized-apps-list">
 				<!--<li>Puke-Mail&#9;<button onclick="revokeClient('client_id')">Revoke</button></li>-->
 			</ul>
+		</div>
+		<div>
+			<a id="sessions" href="#sessions">Sessions</a><br>
+				<p>Your logged in sessions:</p>
 		</div>
 		<div>
 			<a id="clients" href="#clients">OAuth Clients</a><br>

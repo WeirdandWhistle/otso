@@ -1,52 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Otso Guardian</title>
-    <style>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Otso Guardian</title>
+		<style>
+			:root {
+				--login-with-width: 200px;
+				--color: rgb(220, 220, 220);
+				--background-color: #1c1b22;
+			}
 
-        :root{
-            --login-with-width: 200px;
-            --color: rgb(220, 220, 220);
-            --background-color: #1c1b22;
-        }
+			body {
+				background-color: var(--background-color);
+				color: var(--color);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+			}
+			card {
+				--size: 2.5;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				flex-direction: column;
+				position: absolute;
+				border: 1px var(--color) solid;
+				padding: 0.5rem;
+				width: min(80rem, 95%);
+			}
+		</style>
+	</head>
+	<body>
+		<card>
+			<h1>Otso</h1>
+			<span>The last authentication system you will ever need.</span>
+			<hr style="width: 100%" />
+			<p>
+				Otso interfaces with almost every free OAuth 2.0 provider allowing your users to authenticate with their prefrered system. The
+				project is entrirly open source, and runs on <a href="https://github.com/cloudflare/workerd">workerd</a> allowing it to be both
+				self-hosted and deployed with cloudflare.
+			</p>
+			<h3>Ready to get started?</h3>
+			<a href="/login">Log In / Sign Up</a>
+		</card>
 
-        body{
-            background-color: var(--background-color);
-            color: var(--color);
-					display: flex;
-					flex-direction: column;
-					align-items: center;
-        }
-        card{
-            --size: 2.5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            position: absolute;
-            border: 1px var(--color) solid;
-            padding: 0.5rem;
-						width: min(80rem, 95%);
-        }
-    </style>
-</head>
-<body>
-	<card>
-		<h1>Otso</h1>
-		<span>The last authentication system you will ever need.</span>
-		<hr style="width: 100%;">
-		<p>
-		Otso interfaces with almost every free OAuth 2.0 provider allowing your users to authenticate with their prefrered system.
-		The project is entrirly open source, and runs on <a href="https://github.com/cloudflare/workerd">workerd</a> allowing it to be both self-hosted and deployed with cloudflare.
-		</p>
-		<h3>Ready to get started?</h3>
-		<a href="/login">Log In / Sign Up</a>
-
-	</card>
-
-	<script>
-
-  </script>
-</body>
+		<script></script>
+	</body>
 </html>
