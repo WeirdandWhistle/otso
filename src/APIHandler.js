@@ -77,6 +77,8 @@ export async function handle(request, env) {
 			return await appControl.authorizeApp(request, env, KV);
 		} else if (pathname.startsWith('/api/account/revokeApp')) {
 			return await appControl.revokeApp(request, env, KV);
+		} else if(pathname.startsWith('/api/account/revokeSession')){
+			return await session.revokeSessionAPI(request, env, KV);
 		} else if (pathname.startsWith('/api/account/link')) {
 			return await linker.linkAccounts(request, env, KV);
 		} else if (pathname.startsWith('/api/account/logout')) {

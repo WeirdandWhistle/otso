@@ -20,8 +20,12 @@ let deleteDatabaseOnStart = false;
 export default {
 	async fetch(request, env, ctx) {
 		if (!databaseInitialized) {
-			if(deleteDatabaseOnStart) databaseInitializer.remove(env);
-			deleteDatabaseOnStart = false;
+			console.log("init database");
+			if(deleteDatabaseOnStart){
+				console.log("delete database")
+				await databaseInitializer.remove(env);
+				deleteDatabaseOnStart = false;
+			}
 			await initializeDatabase(env);
 		}
 

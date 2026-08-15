@@ -6,13 +6,13 @@ function returnResults(raw){
 // user
 export async function getUserFromIssuer(env, id, issuer) {
     return returnResults(await env.OTSO_DB
-        .prepare("SELECT * FROM users WHERE userID=(SELECT userID FROM OAuthIssuers WHERE id=? AND issuer=? LIMIT 1) LIMIT 1;")
+        .prepare("SELECT * FROM Users WHERE userID=(SELECT userID FROM OAuthIssuers WHERE id=? AND issuer=? LIMIT 1) LIMIT 1;")
         .bind(id, issuer)
         .run());
 }
 export async function getUserFromUserID(env, userID) {
     return returnResults(await env.OTSO_DB
-        .prepare("SELECT * FROM users WHERE userID=? LIMIT 1;")
+        .prepare("SELECT * FROM Users WHERE userID=? LIMIT 1;")
         .bind(userID)
         .run());
 }
@@ -113,13 +113,32 @@ export async function createSession(env, sessionID, userID, sessionData){
         .bind(sessionID, userID, sessionData)
         .run();
 }
+export async function getSessionsFromUserID(env, userID){
+	const raw = await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM Sessions WHERE userID=?;
+			`)
+		.bind(userID)
+		.run();
+	if(raw.results.length == 0)
+		return null;
+	return raw.results;
+}
+export async function deleteSessionFromTimestamp(env, timestamp) {
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM Sessions WHERE created_at=? LIMIT 1;
+			`)
+		.bind(timestamp)
+		.run();
+}
 export async function deleteSession(env, sessionID){
 	await env.OTSO_DB
 		.prepare(`
 			DELETE FROM Sessions WHERE sessionID=?;
 			`)
 		.bind(sessionID)
-		.run()
+		.run();
 }
 
 // OAuthClients

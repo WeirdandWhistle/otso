@@ -213,6 +213,7 @@ export async function OAuthIssue(request, env, KV) {
 					status: 302,
 					headers: {
 						Location: '/account',
+						'Set-Cookie': sessionCookie,
 					},
 				});
 			}

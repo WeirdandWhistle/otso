@@ -86,7 +86,21 @@ export async function useCSRFToken(request, env, KV){
 	if(!safeCompareString(data, `${token}.${user.userID}.${sessionID}`))
 		return false;
 	return true;
-	}
+}
+export async function revokeSessionAPI(request, env, KV){
+	if(await useCSRFToken(request, env, KV) != true)
+		return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
+	const user = await getUserIfSession(request, env);
+	if(!user)
+		return new Response(`401 Unauthorized. Session is invalid.`, {status: 401});
+	if(request.method != 'DELETE')
+		return new Response(`405 Method Not Allowed. Try using 'DELETE'.`, {status: 405});
+	const timestamp = await request.text();
+
+	await db.deleteSessionFromTimestamp(env, timestamp);
+
+	return new Response('OK');
+}
 export async function CSRFTokenEndpoint(request, env, KV){
 	if(request.method == 'OPTIONS'){
 		return new Response(null,{

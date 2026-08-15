@@ -42,6 +42,7 @@ async function privateInfo(request, env) {
 	out.username = user.username;
 	out.userID = user.userID;
 	out.email = user.email;
+	out.created_at = user.created_at;
 	out.loginMethods = user.authenticationMethods.split(" ");
 	out.authorizedApps = [];
 
@@ -67,6 +68,18 @@ async function privateInfo(request, env) {
 				redirect_uri: client.redirection_URIs.split(" "),
 				client_type: client.client_type,
 			});
+		}
+	}
+	out.sessions = [];
+	const sessions = await db.getSessionsFromUserID(env, user.userID);
+	if(sessions){
+		const currentSessionID = session.getSessionID(request);
+		for(const s of sessions){
+			const data = JSON.parse(s.sessionData);
+			data.created_at = s.created_at;
+			if(s.sessionID == currentSessionID)
+				data.current_session = true;
+			out.sessions.push(data);
 		}
 	}
 	return new Response(JSON.stringify(out));

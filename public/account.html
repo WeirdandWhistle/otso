@@ -3,6 +3,12 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<!-- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script> -->
 	<title>Otso Account Page</title>
 	<style>
 
@@ -11,6 +17,8 @@
 			--color: rgb(220, 220, 220);
 			--background-color: #1c1b22;
 			--greyed-out-border: #3d444d;
+			--active-green: #00ff005e;
+			--border-green: #00ff0088;
 		}
 
 		body{
@@ -170,6 +178,12 @@
 			box-shadow: none;
 			transform: none;
 		}
+		.sessionCard{
+			padding: 0.3rem;
+			border: 1px var(--color) solid;
+			width: fit-content;
+			padding-right: 0.5rem;
+		}
 
     </style>
 
@@ -197,6 +211,7 @@
 				<pre>User ID :</pre><input id="userID"><br>
 				<pre>Email   :</pre><input id="email">
 				<pre>Verifyed:</pre><input value="false"><br>
+				<pre>Created :</pre><input id="createdAt"><br>
 		</div>
 		<div>
 			<a id="login-methods" href="#login-methods">Login Methods</a><br>
@@ -213,7 +228,19 @@
 		</div>
 		<div>
 			<a id="sessions" href="#sessions">Sessions</a><br>
-				<p>Your logged in sessions:</p>
+			Your logged in sessions:
+			<div id="sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+				<!-- <div class="sessionCard">
+					<span><b>Firefox</b> on <i>Linux</i></span><br>					
+					<div style="font-size: 0.85rem;">
+						<span>Version: 153.0</span><br>
+						<span>Arcitchure: 64</span><br>
+						<span>ip: 127.0.0.1</span><br>
+						<span>first seen: now</span><br>
+					</div>
+					<button onclick="revokeSession()">Revoke</button>
+				</div> -->
+			</div>
 		</div>
 		<div>
 			<a id="clients" href="#clients">OAuth Clients</a><br>
@@ -479,6 +506,7 @@
 		document.getElementById("username").value = userInfo.username;
 		document.getElementById("email").value = userInfo.email;
 		document.getElementById("userID").value = userInfo.userID;
+		document.getElementById("createdAt").value = dataTimeString(new Date(userInfo.created_at));
 
 		document.getElementById("login-methods-count").innerText = userInfo.loginMethods.length;
 		const loginList = document.getElementById("login-methods-list");
@@ -531,6 +559,7 @@
 			document.getElementById(`change-type-public-${i}`).checked = json.client_type == 'public' ? true : false;
 		}
 		addCopyToClipboard();
+		setupSessions(userInfo);
 	}
 	async function cancelChange(index){
 		location.reload();
@@ -694,7 +723,6 @@
 	}
 	init();
 
-
 	// Source - https://stackoverflow.com/a/1026087
 	function capitalizeFirstLetter(val) {
 		return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -739,10 +767,54 @@
 			method: 'PUT',
 		});
 		if(!res.ok){
+			doError(res);
 			console.log("CSRF error: ", await res.text());
+			if(res.status == 401)
+				window.location = '/login';
+			
 			return;
 		}
 		return await res.text();
+	}
+	async function setupSessions(info){
+		const sessionList = document.getElementById('sessionList');
+		for(const session of info.sessions){
+			let activeSessionIdicator = '';
+			if(session.current_session){
+				activeSessionIdicator = `<div style="aspect-ratio: 1/1; border-radius: 50%; background-color: var(--active-green); position: absolute; top: 0.5rem; right: 0.5rem; width: 1rem; border: 1px var(--border-green) solid;"></div>`;
+			}
+			const str = `
+				<div class="sessionCard" style="position: relative;">
+					${activeSessionIdicator}
+					<span><b>${session.browser}</b> on <i>${session.os.family}</i></span><br>					
+					<div style="font-size: 0.85rem;">
+						<span>Version: ${session.browserVersion}</span><br>
+						<span>Arcitchure: ${session.os.architecture}</span><br>
+						<span>ip: ${session.ip}</span><br>
+						<span>created:<br>${session.created_at}</span><br>
+					</div>
+					<button onclick="revokeSession(this, '${session.created_at}', ${session.current_session})">Revoke</button>
+				</div>`;
+			sessionList.insertAdjacentHTML("beforeend",str);
+		}		
+	}
+	async function revokeSession(button, timestamp, activeSession){
+		const res = await fetch('/api/account/revokeSession',{
+			method: 'DELETE',
+			headers:{
+				'Authorization' : 'Session',
+				'CSRFToken': await getCSRFToken(),
+			},
+			body: timestamp,
+		});
+		if(!res.ok){
+			alert('were sorry an error occured.');
+			doError(res);
+		}
+		button.parentElement.remove();
+		if(activeSession){
+			window.location = '/login';
+		}
 	}
 	const base64SHA256 = async (text) => {
 		let buffer = new TextEncoder().encode(text).buffer;
@@ -759,6 +831,17 @@
 		}
 		return result;
 	};
+	const dataTimeString = (date) => {
+		return date.toDateString() + ', ' + date.toLocaleTimeString();
+	};
+	const doError = async (res) => {
+		if(res.status == 500){
+				document.open();
+				document.write(await res.text());
+				document.close();
+			}
+		throw new Error("block all feature code.")
+	}
 
 </script>
 
