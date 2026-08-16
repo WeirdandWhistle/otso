@@ -6,19 +6,18 @@ export const JWTType = "JWT";
 export const JOSEHeader = {
     alg: signingAlg,
     typ: JWTType,
-    kid: "temp",
 };
 
 export function generatePayload(issuer, userID, audience, experationTime, notBefore, claims){
     let currentUnixTimestamp = Math.floor(Date.now()/1000);
     if(currentUnixTimestamp == null)
         throw new Error("The time can not be null?!?!?!");
-    const payload = {
+    let payload = {
         iss: issuer,
         sub: userID,
         aud: audience,
-        exp: experationTime,
-        nbf: notBefore,
+        exp: Math.floor(experationTime),
+        nbf: Math.floor(notBefore),
         iat: currentUnixTimestamp,
         auth_time: currentUnixTimestamp,
         jti: generateSecureChars(32),

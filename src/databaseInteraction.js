@@ -253,13 +253,13 @@ export async function deleteOAuthTokensFromUserID(env, userID){
 		.bind(userID)
 		.run();
 }
-export async function createOIDCKey(env, kid, keypair_json) {
+export async function createOIDCKey(env, kid, keypair) {
 	await env.OTSO_DB
 		.prepare(`
-			INSERT INTO OIDCKeys (kid, keypair_json)
+			INSERT INTO OIDCKeys (kid, keypair)
 			VALUES (?, ?);
 			`)
-		.bind(kid, keypair_json)
+		.bind(kid, keypair)
 		.run();
 }
 export async function deleteOIDCKeyFromKID(env, kid) {

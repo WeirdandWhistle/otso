@@ -30,7 +30,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
     let redirect_uri = query.get("redirect_uri");
     let verifiyedRedirectURI = false;
     const redirectionURIs = OAuthClient.redirection_URIs ? OAuthClient.redirection_URIs.split(" ") : null;
-    console.log("redirectionURIs",redirectionURIs);
+    // console.log("redirectionURIs",redirectionURIs);
     if(redirectionURIs || redirect_uri){
         if(!redirectionURIs && redirect_uri){
             verifiyedRedirectURI = true;
@@ -164,11 +164,18 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
     } else if(response_type == "id_token"){
         // console.log("key pair", OIDC_KEY_PAIR);
         const header = jwt.JOSEHeader;
-        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), {
-            name: user.username,
-            email: user.email,
-        });
-        const signature = await jwt.generateSignaute(header, payload, OIDC_KEY_PAIR.privateKey);
+        header.kid = OIDC_KEY_PAIR.kid;
+        const claims = {};
+        if(!scopes.includes("openid"))
+            return new Response("400 Bad Request. Must have scope 'openid' to use id_token.",{status:400});
+        if(scopes.includes("profile")){
+            claims.name = user.username;
+            claims.preferred_username = user.username;
+        }
+        if(scopes.includes("email")) claims.email = user.email;
+        // console.log("claims",claims);
+        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), claims);
+        const signature = await jwt.generateSignaute(header, payload, OIDC_KEY_PAIR.keypair.privateKey);
         const id_token = jwt.encodeFullJWT(header, payload, signature);
         
         const q = new URLSearchParams();
