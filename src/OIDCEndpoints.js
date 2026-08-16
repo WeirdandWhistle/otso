@@ -4,7 +4,7 @@ import * as jwt from './JWT.js';
 
 let allKeyPairs = null;
 
-export async function endpoint(request, env, KV, OIDC_KEY_PAIR) {
+export async function endpoint(request, env, KV) {
     const pathname = new URL(request.url).pathname;
 	if (pathname.startsWith('/.well-known/openid-configuration')) {
 		const origin = new URL(request.url).origin;
@@ -26,14 +26,20 @@ export async function endpoint(request, env, KV, OIDC_KEY_PAIR) {
 			},
 		});
 	} else if (pathname.startsWith('/.well-known/jwks.json')) { // http://localhost:8787/.well-known/jwks.json
+		if(!allKeyPairs || allKeyPairs.length == 0)
+			loadAllKeyParis(env);
 		const out = { keys: [] };
-		const temp = await crypto.subtle.exportKey('jwk', OIDC_KEY_PAIR.publicKey);
-		temp.kid = "temp";
-		out.keys.push(temp);
+		for(const key of keys){
+			const temp = await crypto.subtle.exportKey('jwk', key);
+			temp.kid = key.kid;
+			out.keys.push(temp);
+		}
+		
 		return new Response(JSON.stringify(out),{
 			headers: {
 				'Content-Type': 'application/json',
 				'Access-Control-Allow-Origin': '*',
+				'Cache-Control':`max-age=${60 * 60 * 3}`,
 			},
 		})
 	}
@@ -47,8 +53,17 @@ export async function getActiveKeypair(env, keypair){
 		loadAllKeyParis(env);
 	if(allKeyPairs.length == 0){
 		const kid = "init-key-id";
-		// const keypair = 
+		const keypair = JSON.stringify(await jwt.generateKeyPair());
+		await db.createOIDCKey(kid, keypair);
+		allKeyPairs.push({
+			kid: kid,
+			keypair_json: keypair,
+			created_at: new Date(),
+		});
+		return allKeyPairs[0];
 	}
+	allKeyPairs.sort((a, b) => b.created_at.toTime() - a.created_at.toTime());
+	return allKeyPairs[0];
 }
 
 async function loadAllKeyParis(env){

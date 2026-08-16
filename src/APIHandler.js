@@ -20,7 +20,7 @@ let OIDC_KEY_PAIR = null;
 export async function handle(request, env) {
 
     const pathname = new URL(request.url).pathname;
-	OIDC_KEY_PAIR = OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
+	OIDC_KEY_PAIR = await OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
     if(pathname.startsWith("/oauth/") || pathname.startsWith("/callback")){
         return await OAuthIssuer.OAuthIssue(request, env, KV);
     }

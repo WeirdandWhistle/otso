@@ -43,7 +43,7 @@ export async function generateSignaute(header, payload, key){
 export function encodeFullJWT(header, payload, signature){
     return `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}.${signature}`;
 }
-export async function generateKeyPair(env){
+export async function generateKeyPair(){
     return await crypto.subtle.generateKey({
         name: "ECDSA",
         namedCurve: "P-256",
