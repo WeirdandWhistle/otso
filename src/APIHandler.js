@@ -11,11 +11,16 @@ import * as linker from './linkAccounts.js';
 import * as userControl from './userControl.js';
 import * as userInfo from './userInfo.js';
 import * as OAuthIssuer from './OAuthIssuer.js';
+import * as OIDCEndpoints from './OIDCEndpoints.js';
+import * as jwt from "./JWT.js";
+import cypto from 'crypto';
+
+let OIDC_KEY_PAIR = null;
 
 export async function handle(request, env) {
 
     const pathname = new URL(request.url).pathname;
-
+	OIDC_KEY_PAIR = OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
     if(pathname.startsWith("/oauth/") || pathname.startsWith("/callback")){
         return await OAuthIssuer.OAuthIssue(request, env, KV);
     }
@@ -88,12 +93,16 @@ export async function handle(request, env) {
 		} else if (pathname.startsWith('/api/oauth2/client')) {
 			return await OAuthClients.client(request, env, KV);
 		} else if (pathname.startsWith('/api/oauth2/authorize')) {
-			return await OAuthProvider.authorize(request, env, KV);
+			return await OAuthProvider.authorize(request, env, KV, OIDC_KEY_PAIR); // http://localhost:8787/api/oauth2/authorize
 		} else if (pathname.startsWith('/api/oauth2/token')) {
 			return await OAuthProvider.token(request, env, KV);
+		} else if (pathname.startsWith('/api/oauth2/tempToken')) {
+			return await OAuthProvider.tempToken(request, env, KV);
 		} else if (pathname.startsWith('/api/CSRFToken')) {
 			return await session.CSRFTokenEndpoint(request, env, KV);
 		}
+	} else if(pathname.startsWith('/.well-known')){
+		return await OIDCEndpoints.endpoint(request, env, KV, OIDC_KEY_PAIR);
 	}
 
 	return new Response('404 Not Found', {

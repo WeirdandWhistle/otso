@@ -152,6 +152,10 @@
                     return "See your Internal userID, which is not a secret.";
                 case "username":
                     return `See your username. (${username})`;
+                case "openid":
+                    return `Used for OIDC. Internaly it does nothing.`;
+                case "profile":
+                    return `See your whole profile (eg: name, email, address... etc)`
                 default:
                     "unknown property, does nothing";
             }

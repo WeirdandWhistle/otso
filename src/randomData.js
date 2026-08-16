@@ -76,3 +76,11 @@ export const safeCompareString = (a, b)=>{
 	const bufB = Buffer.from(b);
 	return crypto.timingSafeEqual(bufA, bufB);
 }
+export const base64url = (str) => {
+	const buf = new TextEncoder().encode(str).buffer;
+	const arr = new Uint8Array(buf);
+	return arr.toBase64({
+		alphabet:"base64url",
+		omitPadding: true,
+	});
+}

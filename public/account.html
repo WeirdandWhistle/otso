@@ -547,6 +547,7 @@
 						<button onclick="cancelChange(${i})">Cancel</button>
 						<button onclick="saveChange(${i})">Save</button>
 						<button onclick="deleteClient(${i})">Delete</button>
+						<button onclick="getAccessToken(this, ${i})">Get Access Token</button>
 					</div>
 				</card>
 				`);
@@ -560,6 +561,22 @@
 		}
 		addCopyToClipboard();
 		setupSessions(userInfo);
+	}
+	async function getAccessToken(button, i){
+		const res = await fetch("/api/oauth2/tempToken?client_id="+document.getElementById(`change-client_id-${i}`).value,{
+			headers:{
+				'CSRFToken':await getCSRFToken(),
+			}
+		});
+		doError(res);
+		const tokens = await res.json();
+		console.log("tokens", tokens)
+		navigator.clipboard.writeText(tokens.access_token);
+		const temp = button.innerText;
+		button.innerText = 'Copied to Clipboard!';
+		setTimeout(()=>{
+			button.innerText = temp;
+		},3000);
 	}
 	async function cancelChange(index){
 		location.reload();

@@ -4,6 +4,15 @@ import * as db from "./databaseInteraction.js";
 import * as session from "./sessions.js";
 
 export async function info(request, env, KV) {
+	if(request.method == 'OPTIONS'){
+		return new Response('',{
+			headers:{
+				'Access-Control-Allow-Origin':'*',
+				'Access-Control-Request-Method':'POST, GET, OPTIONS',
+				'Access-Control-Allow-Headers':'Authorization',
+			}
+		});
+	}
 	if(request.method != 'GET')
 		return new Response("405 Method Not Allowed. Try using the 'GET' method.",{status: 405});
 
@@ -27,11 +36,15 @@ async function publicInfo(request, env){
 	const scopes = new Set(tokens.scopes.split(' '));
 	const user = await db.getUserFromUserID(env, tokens.userID);
 	const out = {};
-	if(scopes.has('id')) out.userID = user.userID;
-	if(scopes.has('username')) out.username = user.username;
+	if(scopes.has('sub')) out.userID = user.userID;
+	if(scopes.has('preferred_username')) out.username = user.username;
 	if(scopes.has('email')) out.email = user.email;
 
-	return new Response(JSON.stringify(out));
+	return new Response(JSON.stringify(out),{
+		headers:{
+			'Access-Control-Allow-Origin':'*',
+		}
+	});
 }
 async function privateInfo(request, env) {
 	const user = await session.getUserIfSession(request, env);

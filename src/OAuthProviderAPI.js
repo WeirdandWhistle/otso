@@ -1,10 +1,11 @@
 import * as db from "./databaseInteraction.js";
-import { getUserIfSession } from "./sessions.js";
+import * as session from "./sessions.js";
+import * as jwt from "./JWT.js";
 import { validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateAccessToken, generateRefreshToken, safeCompareString } from './randomData.js';
 import { parseScopes, stringifyScopes } from './parseScopes.js';
 
 // OAuth 2.0 endpoints
-export async function authorize(request, env, KV){
+export async function authorize(request, env, KV, OIDC_KEY_PAIR){
     if(request.method != "GET")
         return new Response("400 Bad request. The appropriate HTTP method is 'GET'.", {status: 400});
     // console.log(request.url);
@@ -67,7 +68,8 @@ export async function authorize(request, env, KV){
     if(scopes.length == 0)
         return new Response(`{"error":"invalid_scope","error_description":"Scope can not be nothing."}`,{status:400});
 
-    let user = await getUserIfSession(request, env);
+    let user = await session.getUserIfSession(request, env);
+    // console.log("oauth user",user);
     if(!user){
         // TODO: send to login/signup/authenticaton page
 		    const state = generateSecureChars(32);
@@ -88,16 +90,16 @@ export async function authorize(request, env, KV){
     const authorizedApps = user.authorizedApps;
     let isAppAuthorized = false;
     if(authorizedApps){
-			const apps = parseScopes(authorizedApps);
-			if(apps.has(OAuthClient.client_id)){
-				isAppAuthorized = true;
-				for(const scope of scopes){
-					if(!apps.get(OAuthClient.client_id).has(scope)){
-						isAppAuthorized = false;
-						break;
-					}
+		const apps = parseScopes(authorizedApps);
+		if(apps.has(OAuthClient.client_id)){
+			isAppAuthorized = true;
+			for(const scope of scopes){
+				if(!apps.get(OAuthClient.client_id).has(scope)){
+					isAppAuthorized = false;
+					break;
 				}
 			}
+		}
     }
     if(!isAppAuthorized){
         const HTMLPage = await env.ASSETS.fetch(new Request(`${new URL(request.url).origin}/authorizeApp.html`)); // forges a request to get the HTML page from assets
@@ -156,11 +158,33 @@ export async function authorize(request, env, KV){
 			return new Response(`You are being redirected to <a href="${goingTo}">${goingTo}</a>`,{
 				status: 302,
 				headers:{
-					'Location' : goingTo
+					'Location' : goingTo,
 				}
 			});
+    } else if(response_type == "id_token"){
+        // console.log("key pair", OIDC_KEY_PAIR);
+        const header = jwt.JOSEHeader;
+        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), {
+            name: user.username,
+            email: user.email,
+        });
+        const signature = await jwt.generateSignaute(header, payload, OIDC_KEY_PAIR.privateKey);
+        const id_token = jwt.encodeFullJWT(header, payload, signature);
+        
+        const q = new URLSearchParams();
+        q.set("expires_in", 3600);
+        q.set("id_token", id_token);
+        q.set("state", query.get("state"));
+        const goingTo = `${redirect_uri}#${q.toString()}`;
+        // console.log("id_token", id_token);
+        return new Response(`You're are currently being redirected to <a href="${goingTo}">${goingTo}</a>`,{
+            status: 302,
+            headers:{
+                'Location' : goingTo
+            },
+        });
     } else {
-			return new Response("Sorry, that response_type is not currently supported. Try either 'code' or 'token'.", {status: 404});
+		return new Response("Sorry, that response_type is not currently supported. Try 'code', 'token', or 'id_token'.", {status: 404});
     }
 }
 export async function token(request, env, KV){
@@ -212,13 +236,10 @@ export async function token(request, env, KV){
     }
 
     const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, stateJson.scopes, 3600, true);
-		const out = new URLSearchParams();
-		for(const key in tokens){
-			out.set(key, tokens[key]);
-		}
-    return new Response(out.toString(), {
+    return new Response(JSON.stringify(tokens), {
 			headers:{
 				'Access-Control-Allow-Origin':'*',
+                'Content-Type':'application/json'
 			}
 		});
 }
@@ -238,3 +259,22 @@ async function issueAccessToken(env, userID, client_id, scopes, ttl, issuerefres
 		refresh_token: refresh_token,
 	};
 }
+export async function tempToken(request, env, KV) {
+    if(await session.useCSRFToken(request, env, KV) != true)
+            return new Response("401 Unauthorized. Wrong CSRFToken.",{status:401});
+    if(request.method != 'GET')
+        return new Response("405 Method Not Allowed. Try using 'GET'", {status:405});
+    const user = await session.getUserIfSession(request, env);
+    if(!user)
+        return new Response("401 Unauthorized. That session does not exist or is invalid.", {status: 401});
+    const client_id = new URL(request.url).searchParams.get("client_id");
+    const client = await db.getOAuthClientFromClientID(env, client_id);
+    if(!client)
+        return new Response("404 Not Found. That client does not exist.", {status: 404});
+    if(client.ownerUserID != user.userID)
+        return new Response("401 Unauthorized. User/Sessions does not own that client.",{status:401});
+
+    const tokens = await issueAccessToken(env, user.userID, client_id, allScopes, 3600, true);
+    return new Response(JSON.stringify(tokens));
+}
+const allScopes = ["username","id","email"];

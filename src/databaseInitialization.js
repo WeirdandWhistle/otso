@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS OAuthTokens;
 DROP TABLE IF EXISTS OAuthIssuers;
 DROP TABLE IF EXISTS OAuthClients;
 DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS OIDCKeys;
 `;
 
 const databaseInitString = `
@@ -59,7 +60,14 @@ CREATE TABLE IF NOT EXISTS OAuthTokens (
     refresh_token TEXT,
     userID TEXT NOT NULL,
     client_id TEXT  NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     FOREIGN KEY (userID) REFERENCES Users(userID),
     FOREIGN KEY (client_id) REFERENCES OAuthClients(client_id)
+);
+
+CREATE TABLE IF NOT EXISTS OIDCKeys (
+    kid TEXT NOT NULL PRIMARY KEY,
+    keypair_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 `;

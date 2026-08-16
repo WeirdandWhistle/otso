@@ -253,3 +253,36 @@ export async function deleteOAuthTokensFromUserID(env, userID){
 		.bind(userID)
 		.run();
 }
+export async function createOIDCKey(env, kid, keypair_json) {
+	await env.OTSO_DB
+		.prepare(`
+			INSERT INTO OIDCKeys (kid, keypair_json)
+			VALUES (?, ?);
+			`)
+		.bind(kid, keypair_json)
+		.run();
+}
+export async function deleteOIDCKeyFromKID(env, kid) {
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM OIDCKeys WHERE kid=? LIMIT 1;
+			`)
+		.bind(kid)
+		.run();
+}
+export async function getOIDCKeyFromKID(env, kid) {
+	return returnResults(await env.OTSO_DB
+		.prepare(`
+			SELECT FROM OIDCKeys WHERE kid=? LIMIT 1;
+			`)
+		.bind(kid)
+		.run());
+}
+export async function getAllOIDCKeys(env) {
+	return (await env.OTSO_DB
+		.prepare(`
+			SELECT * FROM OIDCKeys;
+			`)
+		.bind()
+		.run()).results;
+}

@@ -17,7 +17,7 @@ export async function issueSession(env, userID, headers){
 	return sessionID;
 }
 export function getCookie(sessionID){
-    return `session=${sessionID}; HttpOnly; Path=/; SameSite=Strict`;
+    return `session=${sessionID}; HttpOnly; Path=/; SameSite=Lax`;
 }
 export function getSessionID(request){
 	const cookiesArray = request.headers.get("Cookie") ? request.headers.get("Cookie").split(";") : null;
