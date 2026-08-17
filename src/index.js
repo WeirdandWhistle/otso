@@ -10,16 +10,47 @@ let deleteDatabaseOnStart = false;
 export default {
 	async fetch(request, env, ctx) {
 		if (!databaseInitialized) {
-			console.log("init database");
+			// console.log("init database");
 			if(deleteDatabaseOnStart){
-				console.log("delete database")
+				// console.log("delete database")
 				await databaseInitializer.remove(env);
 				deleteDatabaseOnStart = false;
 			}
 			await initializeDatabase(env);
 		}
 
-		return await APIHandler.handle(request, env);
+		const logging = env.EXTENSIVE_LOGGING == 'true';
+		let req;
+		if(logging){
+			req = request.clone();
+		}
+
+		const response =  await APIHandler.handle(request, env);
+
+		if(logging){
+			const res = response.clone();
+			let requestBody = null;
+			let method = req.method;
+			if(method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
+				requestBody = await req.text();
+			
+			let responseBody = null;
+			method = res.method;
+			if(method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
+				responseBody = await res.text();
+
+			console.log("inconing request:", {
+				url: req.url,
+				method: req.method,
+				headers: req.headers,
+				body: requestBody
+			},"\n","outgoing response:",{
+				status: res.status,
+				headers: res.headers,
+				body: responseBody,
+			});
+		}
+		return response;
 	},
 };
 

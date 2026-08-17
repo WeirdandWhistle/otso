@@ -196,7 +196,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
 }
 export async function token(request, env, KV){
     if(request.method != "POST")
-        return new Response("400 Bad request. The appropriate HTTP method is 'POST'.", {status: 400});
+        return new Response("405 Method Not Allowed. The appropriate HTTP method is 'POST'.", {status: 405});
     const query = new URLSearchParams(await request.text());
 
     const code = query.get("code");
