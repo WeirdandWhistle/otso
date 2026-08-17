@@ -43,8 +43,8 @@
 	"d1_databases": [
 		{
 			"binding": "OTSO_DB",
-			"database_name": "otso-db",
-			"database_id": "7689955b-5803-42a4-b1c5-7577aef7a0bd"
+			"database_name": "otso_db",
+			"database_id": "fd9c72c9-7e96-4c0d-900f-0fb1c2951c56"
 		}
 	],
 	/**
