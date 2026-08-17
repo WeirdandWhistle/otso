@@ -33,7 +33,7 @@ export async function handle(request, env) {
 
 			const OAuthState = await KV.get(`state.${state}`);
 			if (!OAuthState) return new Response(`{"ok":false,"error":"invalid_state"}`, { status: 400 });
-			KV.put(`state.${state}`, OAuthState, 60 * 5);
+			await KV.put(`state.${state}`, OAuthState, 60 * 5);
 
 			let username = OAuthState.issuerInfo.username;
 
@@ -133,10 +133,10 @@ const ratelimit = async (KV, key, perMinute) => {
 	}
 
 	if (timestamps.length + 1 > perMinute) {
-		KV.put(lookupKey, timestamps, 60);
+		await KV.put(lookupKey, timestamps, 60);
 		return true;
 	}
 	timestamps.push(Date.now());
-	KV.put(lookupKey, timestamps, 60);
+	await KV.put(lookupKey, timestamps, 60);
 	return false;
 };

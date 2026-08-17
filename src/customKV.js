@@ -9,7 +9,7 @@ export function init(e){
 export async function put(key, value, ttlSeconds){
     clean();
     // console.log(key,"save to KV",value);
-    db.putKV(env, key, JSON.stringify(value), ttlSeconds + Math.floor(Date.now()/1000));
+    await db.putKV(env, key, JSON.stringify(value), ttlSeconds + Math.floor(Date.now()/1000));
 }
 export async function get(key){
     clean();

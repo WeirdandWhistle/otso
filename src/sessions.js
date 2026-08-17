@@ -66,7 +66,7 @@ export async function clearSession(request, env){
 
 export async function createCSRFToken(KV, userID, sessionID){
 	const token = `${generateRandomString(10)}.${generateRandomString(10)}.${generateRandomString(10)}`;
-	KV.put(`CSRFToken.${token}`, token + '.' + userID + '.' + sessionID, 1 * 60);
+	await KV.put(`CSRFToken.${token}`, token + '.' + userID + '.' + sessionID, 1 * 60);
 	return token;
 }
 export async function useCSRFToken(request, env, KV){
@@ -76,7 +76,7 @@ export async function useCSRFToken(request, env, KV){
 	const data = await KV.get(`CSRFToken.${token}`);
 	if(!data)
 		return false;
-	KV.remove(token);
+	await KV.remove(token);
 	const sessionID = getSessionID(request);
 	if(!sessionID)
 		return false;

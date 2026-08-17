@@ -23,7 +23,7 @@ export async function linkAccounts(request, env, KV){
 				};
 				OAuthState.redirect_from = request.url;
 				OAuthState.link = link;
-				KV.put(`state.${state}`, OAuthState, 60 * 5);
+				await KV.put(`state.${state}`, OAuthState, 60 * 5);
 			}
 
 			//console.log("link user",user);
@@ -42,7 +42,7 @@ export async function linkAccounts(request, env, KV){
 			}
 			link.user = user;
 			OAuthState.link = link;
-			KV.put(`state.${state}`, OAuthState, 60 * 5);
+			await KV.put(`state.${state}`, OAuthState, 60 * 5);
 			//console.log("link account user",user);
 			const data = {
 				username: user.username,

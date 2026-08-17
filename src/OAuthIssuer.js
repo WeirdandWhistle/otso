@@ -3,7 +3,6 @@ import { validUsername, correctUsername, base64SHA256, generateRandomString, gen
 import { parseScopes, stringifyScopes } from './parseScopes.js';
 import * as appControl from './appControl.js';
 import * as db from './databaseInteraction.js';
-import * as KV from './customKV.js';
 import * as session from './sessions.js';
 import * as OAuthProvider from './OAuthProviderAPI.js';
 import * as OAuthClients from './OAuthClients.js';
@@ -60,7 +59,7 @@ export async function OAuthIssue(request, env, KV) {
 		if (!stateJson) stateJson = {};
 		if (redirect_from) stateJson.redirect_from = redirect_from;
 		stateJson.auth = provider;
-		KV.put(`state.${state}`, stateJson, 60 * 3);
+		await KV.put(`state.${state}`, stateJson, 60 * 3);
 		query.set('client_id', client_id);
 		forward_url.search = query.toString();
 		return new Response('You are currently being redirected to ' + forward_url.toString(), {
@@ -154,7 +153,7 @@ export async function OAuthIssue(request, env, KV) {
 		// console.log('after authed: user from db, ', user);
 		if (!user) {
 			OAuthState.issuerInfo = issuerInfo;
-			KV.put(`state.${state}`, OAuthState, 60 * 5);
+			await KV.put(`state.${state}`, OAuthState, 60 * 5);
 			const sp = new URLSearchParams();
 			sp.set('state', state);
 			sp.set('username', issuerInfo.username);
@@ -208,7 +207,7 @@ export async function OAuthIssue(request, env, KV) {
 					},
 				});
 			} else {
-				KV.remove(state);
+				await KV.remove(state);
 				return new Response(null, {
 					status: 302,
 					headers: {

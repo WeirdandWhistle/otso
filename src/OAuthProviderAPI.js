@@ -131,7 +131,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
 	if(response_type == "code"){
 			const code = generateSecureChars(42);
 
-			KV.put(`OAuthCode.${code}`, {client: OAuthClient, user: user, redirect_uri: redirect_uri, scopes: scopes});
+			await KV.put(`OAuthCode.${code}`, {client: OAuthClient, user: user, redirect_uri: redirect_uri, scopes: scopes});
 
 			const redirectTo = new URL(redirect_uri);
 			redirectTo.searchParams.set("code", code);
