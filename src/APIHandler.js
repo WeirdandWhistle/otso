@@ -104,7 +104,12 @@ export async function handle(request, env) {
 	} else if(pathname.startsWith('/.well-known')){
 		OIDC_KEY_PAIR = await OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
 		return await OIDCEndpoints.endpoint(request, env, KV, OIDC_KEY_PAIR);
-	}
+	} else if(pathname == "/enviorment")
+		return new Response(env.ENVIORMENT,{
+			headers:{
+				'Cache-Control':`max-age=${60 * 60 * 24 * 7}`
+			},
+		});
 
 	return new Response('404 Not Found', {
 		status: 404,

@@ -44,6 +44,14 @@
 			<a href="/login">Log In / Sign Up</a>
 		</card>
 
-		<script></script>
+		<div id="env" style="background-color: rgb(15, 121, 15); border-radius: 7px; width: 10rem; height: 1rem; padding: 0.3rem; color: var(--color); display: flex; justify-content: center; align-items: center; position: absolute; bottom: 0.5rem; right: 0.5rem;"></div>
+		<script>
+			const a = async () => {
+			const res = await fetch("/enviorment");
+			const env = await res.text();
+			document.getElementById("env").innerText = env;
+			};
+			a();
+		</script>
 	</body>
 </html>
