@@ -34,19 +34,16 @@ export default {
 			if(method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
 				requestBody = await req.text();
 			
-			let responseBody = null;
-			method = res.method;
-			if(method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
-				responseBody = await res.text();
+			let responseBody = await res.text();
 
 			console.log("inconing request:", {
 				url: req.url,
 				method: req.method,
-				headers: req.headers,
+				headers: req.headers.values(),
 				body: requestBody
 			},"\n","outgoing response:",{
 				status: res.status,
-				headers: res.headers,
+				headers: res.headers.values(),
 				body: responseBody,
 			});
 		}
