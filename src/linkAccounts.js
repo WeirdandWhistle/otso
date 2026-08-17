@@ -10,7 +10,7 @@ export async function linkAccounts(request, env, KV){
 
 		if(typeParam.startsWith("create")){
 			const state = query.get("state");
-			const OAuthState = KV.get(`state.${state}`);
+			const OAuthState = await KV.get(`state.${state}`);
 			if(!OAuthState)
 				return new Response("State is invalid. Basicly your session timed out.",{status:400});
 			const user = await session.getUserIfSession(request, env);
@@ -71,7 +71,7 @@ export async function linkAccounts(request, env, KV){
 		if(!json.username && !json.email && !json.state)
 			return new Response('400 Bad Request. missing an argument.',{status:400});
 
-		const OAuthState = KV.get(`state.${json.state}`);
+		const OAuthState = await KV.get(`state.${json.state}`);
 		if(!OAuthState)
 			return new Response('400 Bad Request. invalid state',{status:400});
 		if(!OAuthState.link)

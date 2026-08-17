@@ -56,7 +56,7 @@ export async function OAuthIssue(request, env, KV) {
 		} else {
 			throw new Error('That OAuth 2.0 provider is currently not supported');
 		}
-		let stateJson = KV.get(`state.${state}`);
+		let stateJson = await KV.get(`state.${state}`);
 		if (!stateJson) stateJson = {};
 		if (redirect_from) stateJson.redirect_from = redirect_from;
 		stateJson.auth = provider;
@@ -82,7 +82,7 @@ export async function OAuthIssue(request, env, KV) {
 		if (!code || !state)
 			return new Response("No client should ever be here without the quary params 'code' and 'state' for OAuth 2.0.", { status: 400 });
 		// const KVstateTemp = await env.OAUTH_STATE.get(state);
-		let OAuthState = KV.get(`state.${state}`);
+		let OAuthState = await KV.get(`state.${state}`);
 		if (!OAuthState) return new Response('Invalid State', { status: 400 });
 		const body = new URLSearchParams();
 		body.set('grant_type', grant_type);
@@ -151,7 +151,7 @@ export async function OAuthIssue(request, env, KV) {
 		issuerInfo.access_token = tokens.access_token;
 		issuerInfo.refresh_token = tokens.refresh_token;
 		const user = await db.getUserFromIssuer(env, issuerInfo.id, issuerInfo.issuer);
-		console.log('after authed: user from db, ', user);
+		// console.log('after authed: user from db, ', user);
 		if (!user) {
 			OAuthState.issuerInfo = issuerInfo;
 			KV.put(`state.${state}`, OAuthState, 60 * 5);

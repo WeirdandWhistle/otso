@@ -18,20 +18,20 @@ import cypto from 'crypto';
 let OIDC_KEY_PAIR = null;
 
 export async function handle(request, env) {
-
+	KV.init(env);
     const pathname = new URL(request.url).pathname;
     if(pathname.startsWith("/oauth/") || pathname.startsWith("/callback")){
         return await OAuthIssuer.OAuthIssue(request, env, KV);
     }
 
 	if (pathname.startsWith('/api/')) {
-		if (ratelimit(KV, `${request.headers.get('CF-Connecting-IP')}`, 60)) return new Response('429 Too Many Requets', { status: 429 });
+		if (await ratelimit(KV, `${request.headers.get('CF-Connecting-IP')}`, 60)) return new Response('429 Too Many Requets', { status: 429 });
 		if (pathname.startsWith('/api/account/createAccount')) {
 			if (request.method != 'POST') return new Response('405 Method Not Allowed', { status: 405 });
 			const postJson = await request.json();
 			const state = postJson.state;
 
-			const OAuthState = KV.get(`state.${state}`);
+			const OAuthState = await KV.get(`state.${state}`);
 			if (!OAuthState) return new Response(`{"ok":false,"error":"invalid_state"}`, { status: 400 });
 			KV.put(`state.${state}`, OAuthState, 60 * 5);
 
@@ -120,9 +120,9 @@ export async function handle(request, env) {
 }
 
 // returns true/false. true for being ratelimited, and false when under the limit
-const ratelimit = (KV, key, perMinute) => {
+const ratelimit = async (KV, key, perMinute) => {
 	const lookupKey = `Ratelimiter.${key}`;
-	let timestamps = KV.get(lookupKey);
+	let timestamps = await KV.get(lookupKey);
 	if (!timestamps) {
 		timestamps = [];
 	}

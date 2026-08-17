@@ -1,39 +1,35 @@
-const KV = new Map();
+import * as db from "./databaseInteraction.js";
+
+let env;
 const interactionsPerClean = 25;
-let interactionSinceLastClean = 0; 
-export function put(key, value, ttlSeconds){
-    clean();
-    KV.set(key, {ttl: (ttlSeconds*1000)+Date.now(), data: value});
+let interactionSinceLastClean = 0;
+export function init(e){
+    env = e;
 }
-export function get(key){
+export async function put(key, value, ttlSeconds){
     clean();
-    const value = KV.get(key);
-    if(!value)
-        return null;
-    if(value.ttl <= Date.now()){
-        KV.delete(key);
+    // console.log(key,"save to KV",value);
+    db.putKV(env, key, JSON.stringify(value), ttlSeconds + Math.floor(Date.now()/1000));
+}
+export async function get(key){
+    clean();
+    const temp = await db.getKV(env, key);
+    // console.log(key,"lookup from kv",temp);
+    try {
+        return JSON.parse(temp);
+    } catch (error) {
         return null;
     }
-    return value.data;
 }
-export function remove(key){
-    KV.delete(key);
+export async function remove(key){
+    await db.deleteKV(env, key);
     clean();
 }
-export function clean(){
+export async function clean(){
     interactionSinceLastClean++;
     if(interactionSinceLastClean <= interactionsPerClean){
         return;
     }
-    console.log("cleaning");
     interactionSinceLastClean = 0;
-    const iterator = KV.entries();
-    const now = Date.now();
-    let value = iterator.next().value;
-    while(value){
-        if(value[1].ttl <= now){
-            KV.delete(value[0]);
-        }
-        value = iterator.next().value;
-    }
+    await db.KVClean(env);
 }

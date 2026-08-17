@@ -16,13 +16,13 @@ export async function deleteAccount(request, env, KV){
 
 		if(chall.length != 3 && letter.length != 1)
 			return new Response('bad',{status:400});
-		 KV.put(`deleteAccount.${user.userID}`, {challenge: `${chall}${enge}`.toUpperCase(), letter: letter}, 60);
+		 await KV.put(`deleteAccount.${user.userID}`, {challenge: `${chall}${enge}`.toUpperCase(), letter: letter}, 60);
 		return new Response(enge);
 	 } else if(request.method == 'DELETE'){
 		 const nonce = await request.text();
 		 if(!nonce)
 			 return new Response('bad',{status:400});
-		 const data = KV.get(`deleteAccount.${user.userID}`);
+		 const data = await KV.get(`deleteAccount.${user.userID}`);
 		 if(!data)
 			 return new Response('bad',{status:400});
 		 const hash = await base64SHA256(data.challenge + '-' + nonce);

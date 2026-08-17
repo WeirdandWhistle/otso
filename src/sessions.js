@@ -73,7 +73,7 @@ export async function useCSRFToken(request, env, KV){
 	const token = request.headers.get('CSRFToken');
 	if(!token)
 		return false;
-	const data = KV.get(`CSRFToken.${token}`);
+	const data = await KV.get(`CSRFToken.${token}`);
 	if(!data)
 		return false;
 	KV.remove(token);

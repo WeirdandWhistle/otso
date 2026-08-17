@@ -76,7 +76,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
 				const stateJson = {
 					redirect_from: request.url,
 				};
-			  KV.put(`state.${state}`, stateJson, 60);
+			  await KV.put(`state.${state}`, stateJson, 60);
 
 
 			return new Response("You are currently being redirected to /login.", {
@@ -200,7 +200,7 @@ export async function token(request, env, KV){
     const query = new URLSearchParams(await request.text());
 
     const code = query.get("code");
-    const stateJson = KV.get(`OAuthCode.${code}`);
+    const stateJson = await KV.get(`OAuthCode.${code}`);
     const redirect_uri = query.get("redirect_uri");
     const grant_type = query.get("grant_type");
     if(!code){
@@ -212,7 +212,7 @@ export async function token(request, env, KV){
     } if(grant_type != "authorization_code"){
         return new Response(`{"error":"invalid_request","error_description":"grant_type must be 'authorization_code'. OAuth 2.0 spec: https://datatracker.ietf.org/doc/html/rfc6749"}`, {status: 400});
     }
-    KV.remove(`OAuthCode.${code}`);
+    await KV.remove(`OAuthCode.${code}`);
 
     let client_id;
     let client_secret;

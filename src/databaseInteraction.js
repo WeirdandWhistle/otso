@@ -286,3 +286,43 @@ export async function getAllOIDCKeys(env) {
 		.bind()
 		.run()).results;
 }
+export async function putKV(env, k, v, ttl){
+	await env.OTSO_DB
+		.prepare(`
+			INSERT INTO KV (k, v, ttl)
+			VALUES (?, ?, ?)
+			ON CONFLICT(k) DO UPDATE SET
+			v = excluded.v,
+			ttl = excluded.ttl;
+			`)
+		.bind(k, v, ttl)
+		.run();
+}
+export async function getKV(env, k){
+	const temp = returnResults(await env.OTSO_DB
+		.prepare(`
+			SELECT v FROM KV WHERE k=? LIMIT 1;
+			`)
+		.bind(k)
+		.run());
+	// console.log("from db", temp);
+	if(!temp)
+		return null;
+	return temp.v;
+}
+export async function KVClean(env){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM KV WHERE ttl < ?;
+			`)
+		.bind(Math.floor(Date.now()))
+		.run();
+}
+export async function deleteKV(env, k){
+	await env.OTSO_DB
+		.prepare(`
+			DELETE FROM KV WHERE k=?;
+			`)
+		.bind(k)
+		.run();
+}
