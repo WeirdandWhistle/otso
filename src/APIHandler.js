@@ -26,7 +26,7 @@ export async function handle(request, env) {
 
 	if (pathname.startsWith('/api/')) {
 		if (await ratelimit(KV, `${request.headers.get('CF-Connecting-IP')}`, 60)) return new Response('429 Too Many Requets', { status: 429 });
-		if (pathname.startsWith('/api/account/createAccount')) {
+		if (pathname.startsWith('/api/account/createAccount')){
 			if (request.method != 'POST') return new Response('405 Method Not Allowed', { status: 405 });
 			const postJson = await request.json();
 			const state = postJson.state;

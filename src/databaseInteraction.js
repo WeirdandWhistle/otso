@@ -287,6 +287,7 @@ export async function getAllOIDCKeys(env) {
 		.run()).results;
 }
 export async function putKV(env, k, v, ttl){
+	console.log("PUT key",k,"value",v);
 	await env.OTSO_DB
 		.prepare(`
 			INSERT INTO KV (k, v, ttl)
@@ -299,6 +300,7 @@ export async function putKV(env, k, v, ttl){
 		.run();
 }
 export async function getKV(env, k){
+	console.log("GET key",k);
 	const temp = returnResults(await env.OTSO_DB
 		.prepare(`
 			SELECT v FROM KV WHERE k=? LIMIT 1;
