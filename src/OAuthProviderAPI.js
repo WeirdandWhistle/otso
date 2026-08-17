@@ -131,7 +131,15 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
 	if(response_type == "code"){
 			const code = generateSecureChars(42);
 
-			await KV.put(`OAuthCode.${code}`, {client: OAuthClient, user: user, redirect_uri: redirect_uri, scopes: scopes});
+			await KV.put(`OAuthCode.${code}`, {
+                client: OAuthClient,
+                user: user,
+                redirect_uri: redirect_uri,
+                scopes: scopes,
+                pkce:{
+                    nonce: query.get("nonce"),
+                }
+            });
 
 			const redirectTo = new URL(redirect_uri);
 			redirectTo.searchParams.set("code", code);
@@ -174,7 +182,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
         }
         if(scopes.includes("email")) claims.email = user.email;
         // console.log("claims",claims);
-        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), claims);
+        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), query.get("nonce"), claims);
         const signature = await jwt.generateSignaute(header, payload, OIDC_KEY_PAIR.keypair.privateKey);
         const id_token = jwt.encodeFullJWT(header, payload, signature);
         
@@ -194,7 +202,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR){
 		return new Response("Sorry, that response_type is not currently supported. Try 'code', 'token', or 'id_token'.", {status: 404});
     }
 }
-export async function token(request, env, KV){
+export async function token(request, env, KV, OIDC_KEY_PAIR){
     if(request.method != "POST")
         return new Response("405 Method Not Allowed. The appropriate HTTP method is 'POST'.", {status: 405});
     const query = new URLSearchParams(await request.text());
@@ -243,6 +251,25 @@ export async function token(request, env, KV){
     }
 
     const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, stateJson.scopes, 3600, true);
+    if(stateJson.scopes.includes("openid")){
+        const scopes = stateJson.scopes;
+        const user = stateJson.user;
+
+        const header = jwt.JOSEHeader;
+        header.kid = OIDC_KEY_PAIR.kid;
+        const claims = {};
+        if(!scopes.includes("openid"))
+            return new Response("400 Bad Request. Must have scope 'openid' to use id_token.",{status:400});
+        if(scopes.includes("profile")){
+            claims.name = user.username;
+            claims.preferred_username = user.username;
+        }
+        if(scopes.includes("email")) claims.email = user.email;
+        const payload = jwt.generatePayload(new URL(request.url).origin, user.userID, client_id, (Date.now()/1000)+3600, (Date.now()/1000), stateJson.pkce.nonce, claims);
+        const signature = await jwt.generateSignaute(header, payload, OIDC_KEY_PAIR.keypair.privateKey);
+        const id_token = jwt.encodeFullJWT(header, payload, signature);
+        tokens.id_token = id_token;
+    }
     return new Response(JSON.stringify(tokens), {
 			headers:{
 				'Access-Control-Allow-Origin':'*',

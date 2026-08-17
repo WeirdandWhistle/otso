@@ -95,7 +95,8 @@ export async function handle(request, env) {
 			OIDC_KEY_PAIR = await OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
 			return await OAuthProvider.authorize(request, env, KV, OIDC_KEY_PAIR); // http://localhost:8787/api/oauth2/authorize
 		} else if (pathname.startsWith('/api/oauth2/token')) {
-			return await OAuthProvider.token(request, env, KV);
+			OIDC_KEY_PAIR = await OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
+			return await OAuthProvider.token(request, env, KV, OIDC_KEY_PAIR);
 		} else if (pathname.startsWith('/api/oauth2/tempToken')) {
 			return await OAuthProvider.tempToken(request, env, KV);
 		} else if (pathname.startsWith('/api/CSRFToken')) {

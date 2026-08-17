@@ -8,7 +8,7 @@ export const JOSEHeader = {
     typ: JWTType,
 };
 
-export function generatePayload(issuer, userID, audience, experationTime, notBefore, claims){
+export function generatePayload(issuer, userID, audience, experationTime, notBefore, nonce, claims){
     let currentUnixTimestamp = Math.floor(Date.now()/1000);
     if(currentUnixTimestamp == null)
         throw new Error("The time can not be null?!?!?!");
@@ -21,7 +21,7 @@ export function generatePayload(issuer, userID, audience, experationTime, notBef
         iat: currentUnixTimestamp,
         auth_time: currentUnixTimestamp,
         jti: generateSecureChars(32),
-        nonce: generateRandomString(16),
+        nonce: nonce ? nonce : generateRandomString(16),
     };
     for(const key in claims){
         // console.log("claim",key,"value",claims[key]);
