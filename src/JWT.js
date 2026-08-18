@@ -1,5 +1,5 @@
 import { base64url, validUsername, correctUsername, base64SHA256, generateRandomString, generateSecureChars, generateAccessToken, generateRefreshToken, safeCompareString } from './randomData.js';
-import cypto from 'crypto';
+import crypto from 'crypto';
 
 export const signingAlg = "ES256";
 export const JWTType = "JWT";

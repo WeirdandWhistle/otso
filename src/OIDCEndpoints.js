@@ -1,6 +1,7 @@
 import * as db from './databaseInteraction.js';
 import * as jwt from './JWT.js';
 import { generateRandomString } from './randomData.js';
+// import crypto from 'crypto';
 
 let allKeyPairs = null;
 
@@ -17,7 +18,7 @@ export async function endpoint(request, env, KV) {
 			response_types_supported: ['code', 'token', 'id_token'],
 			id_token_signing_alg_values_supported: ['ES256'],
 			scopes_supported: ['username', 'email', 'id', 'openid', 'profile'],
-			token_endpoint_auth_methods_supported: ['client_secret_basic'],
+			token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
 		};
 		return new Response(JSON.stringify(out), {
 			headers: {
@@ -39,12 +40,18 @@ export async function endpoint(request, env, KV) {
 			headers: {
 				'Content-Type': 'application/json',
 				'Access-Control-Allow-Origin': '*',
-				'Cache-Control':`max-age=${60 * 60 * 3}`,
+				'Cache-Control':`public,max-age=${60 * 60 * 1}`,
 			},
 		})
 	}
+	return new Response("404 Not Found",{status:404});
 }
-
+async function exportKeypair(keypair){
+	const pubJWK = await crypto.subtle.exportKey("jwk", keypair.publicKey);
+	const secJWK = await crypto.subtle.exportKey("jwk", keypair.privateKey);
+	const JWKKeypair = { pub: pubJWK, sec: secJWK };
+	return JSON.stringify(JWKKeypair);
+}
 export async function getActiveKeypair(env, keypair){
 	if(keypair)
 		return keypair;
@@ -53,10 +60,8 @@ export async function getActiveKeypair(env, keypair){
 	if(allKeyPairs.length == 0){
 		const kid = "init-key-id";
 		const keypair = await jwt.generateKeyPair();
-		const pubJWK = await crypto.subtle.exportKey("jwk", keypair.publicKey);
-		const secJWK = await crypto.subtle.exportKey("jwk", keypair.privateKey);
-		const JWKKeypair = { pub: pubJWK, sec: secJWK };
-		await db.createOIDCKey(env, kid, JSON.stringify(JWKKeypair));
+		const JWKKeypair = await exportKeypair(keypair)
+		await db.createOIDCKey(env, kid, JWKKeypair);
 		allKeyPairs.push({
 			kid: kid,
 			keypair: keypair,
@@ -80,8 +85,8 @@ async function addNewKeyPair(env){
 		kid = generateRandomString(8);
 	}
 	const keypair = await jwt.generateKeyPair();
-	await db.createOIDCKey(env, kid, JSON.stringify(keypair));
-	await loadAllKeyPairs();
+	await db.createOIDCKey(env, kid, await exportKeypair(keypair));
+	await loadAllKeyPairs(env);
 	sortAllKeys();
 }
 async function loadAllKeyPairs(env){
@@ -90,7 +95,7 @@ async function loadAllKeyPairs(env){
 		// const in1 = allKeyPairs[i].keypair; 
 		const { pub, sec } = JSON.parse(allKeyPairs[i].keypair);
 		// console.log("pubJWK",pub);
-		// console.log("parsed",JSON.parse(allKeyPairs[i].keypair));
+		console.log("parsed",JSON.parse(allKeyPairs[i].keypair));
 		const pubKey = await crypto.subtle.importKey("jwk", pub,{name:"ECDSA", namedCurve:"P-256"},true,["verify"]);
 		const secKey = await crypto.subtle.importKey("jwk", sec,{name:"ECDSA", namedCurve:"P-256"},true,["sign"]);
 		allKeyPairs[i].keypair = {
