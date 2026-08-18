@@ -80,7 +80,7 @@ async function addNewKeyPair(env){
 		kid = generateRandomString(8);
 	}
 	const keypair = await jwt.generateKeyPair();
-	await db.createOIDCKey(kid, JSON.stringify(keypair));
+	await db.createOIDCKey(env, kid, JSON.stringify(keypair));
 	await loadAllKeyPairs();
 	sortAllKeys();
 }
