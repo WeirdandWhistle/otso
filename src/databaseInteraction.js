@@ -273,7 +273,7 @@ export async function deleteOIDCKeyFromKID(env, kid) {
 export async function getOIDCKeyFromKID(env, kid) {
 	return returnResults(await env.OTSO_DB
 		.prepare(`
-			SELECT FROM OIDCKeys WHERE kid=? LIMIT 1;
+			SELECT * FROM OIDCKeys WHERE kid=? LIMIT 1;
 			`)
 		.bind(kid)
 		.run());
