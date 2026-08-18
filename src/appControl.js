@@ -26,7 +26,7 @@ export async function authorizeApp(request, env, KV){
 		return new Respose("400 Bad Requets. Referer header scope can not contain ';'.",{status:400});
 
 	const scopes = parseScopes(user.authorizedApps);
-	console.log("scopes",scopes);
+	// console.log("scopes",scopes);
 	if(scopes.has(client.client_id)){
 		const temp = scopes.get(client.client_id);
 		referer.searchParams.get("scope").split(" ").forEach((e)=>temp.add(e));

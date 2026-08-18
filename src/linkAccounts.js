@@ -26,7 +26,6 @@ export async function linkAccounts(request, env, KV){
 				await KV.put(`state.${state}`, OAuthState, 60 * 5);
 			}
 
-			//console.log("link user",user);
 			if(!user){
 				const loginURL = new URL(request.url);
 				loginURL.pathname = "/login";
@@ -43,13 +42,11 @@ export async function linkAccounts(request, env, KV){
 			link.user = user;
 			OAuthState.link = link;
 			await KV.put(`state.${state}`, OAuthState, 60 * 5);
-			//console.log("link account user",user);
 			const data = {
 				username: user.username,
 				email1: user.email,
 				email2: link.issuerInfo.email,
 			};
-			//console.log('link account data',data);
 			const replaceString = `{"where":"RIGHT HERE! INSERT DATA RIGHT HERE! [insert data here!]"}`;
 			const tempURL = new URL(request.url);
 			tempURL.pathname = '/linkAccount';
@@ -90,10 +87,8 @@ export async function linkAccounts(request, env, KV){
 				return new Response('400 Bad Request. That username is already taken.',{status:400});
 		}
 		const authenticationMethods = user.authenticationMethods + ' ' + OAuthState.link.loginMethod;
-		//console.log("link accounts authenticationMethods",authenticationMethods,"1",user.authenticationMethods,"2",OAuthState.link.loginMethod);
 
 		const issuerInfo = OAuthState.link.issuerInfo;
-		console.log("issuerInfo".issuerInfo,"with",OAuthState.link.loginMethod);
 		await db.createOAuthIssuer(env, issuerInfo.id, OAuthState.link.loginMethod, issuerInfo.username, issuerInfo.email, issuerInfo.access_token, issuerInfo.refresh_token, user.userID);
 
 		await db.updateUser(env, user.userID, authenticationMethods, user.authorizedApps, email, username);

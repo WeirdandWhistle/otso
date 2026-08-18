@@ -95,7 +95,7 @@ async function loadAllKeyPairs(env){
 		// const in1 = allKeyPairs[i].keypair; 
 		const { pub, sec } = JSON.parse(allKeyPairs[i].keypair);
 		// console.log("pubJWK",pub);
-		console.log("parsed",JSON.parse(allKeyPairs[i].keypair));
+		// console.log("parsed",JSON.parse(allKeyPairs[i].keypair));
 		const pubKey = await crypto.subtle.importKey("jwk", pub,{name:"ECDSA", namedCurve:"P-256"},true,["verify"]);
 		const secKey = await crypto.subtle.importKey("jwk", sec,{name:"ECDSA", namedCurve:"P-256"},true,["sign"]);
 		allKeyPairs[i].keypair = {
