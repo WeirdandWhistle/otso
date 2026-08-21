@@ -74,7 +74,7 @@ export async function getActiveKeypair(env, keypair){
 	// setTimestampsForKeyPairs();
 	sortAllKeys();
 	// console.log("keyapris",allKeyPairs[0].created_at);
-	if((allKeyPairs[0].created_at.getTime() / 1000) + (60 * 60 * 24) < (Date.now() / 1000))
+	if((allKeyPairs[0].created_at.getTime() / 1000) + (60 * 60 * 24 * 7 * 4 * 3) < (Date.now() / 1000))
 		await addNewKeyPair(env);
 	return allKeyPairs[0];
 }
