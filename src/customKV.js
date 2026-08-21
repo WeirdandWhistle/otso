@@ -1,8 +1,7 @@
 import * as db from "./databaseInteraction.js";
 
 let env;
-const interactionsPerClean = 25;
-let interactionSinceLastClean = 0;
+const chanceToClean = 30;
 export function init(e){
     env = e;
 }
@@ -26,10 +25,9 @@ export async function remove(key){
     clean();
 }
 export async function clean(){
-    interactionSinceLastClean++;
-    if(interactionSinceLastClean <= interactionsPerClean){
-        return;
-    }
-    interactionSinceLastClean = 0;
+    console.log("almost cleaning");
+    if(Math.floor(Math.random() * chanceToClean) != 0) return;
+    console.log("cleaning");
+
     await db.KVClean(env);
 }
