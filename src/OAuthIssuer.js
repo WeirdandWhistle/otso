@@ -132,20 +132,24 @@ export async function OAuthIssue(request, env, KV) {
 			default:
 				return new Response('Could not detect a usable format for token exchange');
 		}
-		let issuerInfo; // {username, id, email, issuer}
-		if (OAuthState.auth == 'github') {
-			issuerInfo = await getGithubUser(tokens.access_token);
-			issuerInfo.email = await getGithubUserEmail(tokens.access_token);
-		} else if (OAuthState.auth == 'google') {
-			issuerInfo = await getGoogleUser(tokens.access_token);
-		} else if (OAuthState.auth == 'slack') {
-			issuerInfo = await getSlackUser(tokens);
-		} else if (OAuthState.auth == 'discord') {
-			issuerInfo = await getDiscordUser(tokens.access_token);
-		} else if (OAuthState.auth == 'twitch') {
-			issuerInfo = await getTwitchUser(tokens.access_token, env.TWITCH_CLIENT_ID);
-		} else {
-			throw new Error('Huh..?');
+		try {
+			let issuerInfo; // {username, id, email, issuer}
+			if (OAuthState.auth == 'github') {
+				issuerInfo = await getGithubUser(tokens.access_token);
+				issuerInfo.email = await getGithubUserEmail(tokens.access_token);
+			} else if (OAuthState.auth == 'google') {
+				issuerInfo = await getGoogleUser(tokens.access_token);
+			} else if (OAuthState.auth == 'slack') {
+				issuerInfo = await getSlackUser(tokens);
+			} else if (OAuthState.auth == 'discord') {
+				issuerInfo = await getDiscordUser(tokens.access_token);
+			} else if (OAuthState.auth == 'twitch') {
+				issuerInfo = await getTwitchUser(tokens.access_token, env.TWITCH_CLIENT_ID);
+			} else {
+				throw new Error('Huh..?');
+			}
+		} catch (error) {
+			return new Response("We are very sorry. An error occured: "+error,{status:500});
 		}
 		issuerInfo.access_token = tokens.access_token;
 		issuerInfo.refresh_token = tokens.refresh_token;

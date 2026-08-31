@@ -25,9 +25,7 @@ export async function remove(key) {
 	clean();
 }
 export async function clean() {
-	console.log('almost cleaning');
 	if (Math.floor(Math.random() * chanceToClean) != 0) return;
-	console.log('cleaning');
 
 	await db.KVClean(env);
 }
