@@ -1,8 +1,8 @@
 export async function init(env) {
-	await env.OTSO_DB.prepare(databaseInitString).bind().run(); 
+	await env.OTSO_DB.prepare(databaseInitString).bind().run();
 }
-export async function remove(env){
-    await env.OTSO_DB.prepare(databaseDeleteString).bind().run();
+export async function remove(env) {
+	await env.OTSO_DB.prepare(databaseDeleteString).bind().run();
 }
 const databaseDeleteString = `
 DROP TABLE IF EXISTS Sessions;

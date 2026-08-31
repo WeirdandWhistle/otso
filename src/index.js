@@ -11,7 +11,7 @@ export default {
 	async fetch(request, env, ctx) {
 		if (!databaseInitialized) {
 			// console.log("init database");
-			if(deleteDatabaseOnStart){
+			if (deleteDatabaseOnStart) {
 				// console.log("delete database")
 				await databaseInitializer.remove(env);
 				deleteDatabaseOnStart = false;
@@ -21,31 +21,36 @@ export default {
 
 		const logging = env.EXTENSIVE_LOGGING == 'true';
 		let req;
-		if(logging){
+		if (logging) {
 			req = request.clone();
 		}
 
-		const response =  await APIHandler.handle(request, env);
+		const response = await APIHandler.handle(request, env);
 
-		if(logging){
+		if (logging) {
 			const res = response.clone();
 			let requestBody = null;
 			let method = req.method;
-			if(method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
-				requestBody = await req.text();
-			
+			if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') requestBody = await req.text();
+
 			let responseBody = await res.text();
 
-			console.log("inconing request:", {
-				url: req.url,
-				method: req.method,
-				headers: req.headers.values(),
-				body: requestBody
-			},"\n","outgoing response:",{
-				status: res.status,
-				headers: res.headers.values(),
-				body: responseBody,
-			});
+			console.log(
+				'inconing request:',
+				{
+					url: req.url,
+					method: req.method,
+					headers: req.headers.values(),
+					body: requestBody,
+				},
+				'\n',
+				'outgoing response:',
+				{
+					status: res.status,
+					headers: res.headers.values(),
+					body: responseBody,
+				},
+			);
 		}
 		return response;
 	},
