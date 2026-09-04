@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS Users (
     authorizedApps TEXT DEFAULT '',
     email TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    username TEXT NOT NULL
+    username TEXT NOT NULL,
+    userType
 );
 
 CREATE TABLE IF NOT EXISTS Sessions (

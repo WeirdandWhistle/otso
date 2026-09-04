@@ -1,6 +1,6 @@
 import * as session from './sessions.js';
 import * as db from './databaseInteraction.js';
-import { generateRandomString, base64SHA256 } from './randomData.js';
+import { generateRandomString, base64SHA256, validUsername, correctUsername, generateUserID, generateSecureChars } from './randomData.js';
 
 export async function createAccount(request, env, KV) {
 	if (request.method != 'POST') return new Response('405 Method Not Allowed', { status: 405 });
@@ -32,7 +32,8 @@ export async function createAccount(request, env, KV) {
 		);
 
 	const userID = generateUserID();
-	await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token);
+	const isAdmin = await db.firstUser(env);
+	await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token, isAdmin ? 'admin' : null);
 
 	const headers = new Headers();
 

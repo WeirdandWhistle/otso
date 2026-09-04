@@ -132,8 +132,8 @@ export async function OAuthIssue(request, env, KV) {
 			default:
 				return new Response('Could not detect a usable format for token exchange');
 		}
-		try {
-			let issuerInfo; // {username, id, email, issuer}
+		let issuerInfo; // {username, id, email, issuer}
+		try {			
 			if (OAuthState.auth == 'github') {
 				issuerInfo = await getGithubUser(tokens.access_token);
 				issuerInfo.email = await getGithubUserEmail(tokens.access_token);

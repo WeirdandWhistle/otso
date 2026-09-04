@@ -36,15 +36,30 @@ export async function getUserFromEmail(env, email){
 	return raw.results;
 
 }
-export async function updateUser(env, userID, authenticationMethods, authorizedApps, email, username) {
+export async function updateUser(env, userID, authenticationMethods, authorizedApps, email, username, userType=null) {
+	const userTypeSQL = userType != null ? `userType=?,` : '';
+	let params = [];
+	params.push(authenticationMethods ?? '');
+	params.push(authorizedApps ?? '');
+	params.push(email ?? null);
+	if(userType != null) params.push(userType);
+	params.push(username);
+	params.push(userID);
 	await env.OTSO_DB
 		.prepare(`
 			UPDATE Users
-			SET authenticationMethods=?, authorizedApps=?, email=?, username=?
+			SET authenticationMethods=?, authorizedApps=?, email=?, ${userTypeSQL} username=?
 			WHERE userID=?;
 			`)
-		.bind(authenticationMethods ?? '', authorizedApps ?? '', email ?? null, username, userID)
+		.bind(...params)
 		.run();
+}
+export async function firstUser(env){
+	const raw = env.OTSO_DB
+		.prepare(`SELECT 1 FROM Users LIMIT 1;`)
+		.bind()
+		.run();
+	return raw.results.length <= 0;
 }
 export async function createOAuthIssuer(env, ID, issuer, username, email, access_token, refresh_token, userID) {
 	await env.OTSO_DB
@@ -55,7 +70,7 @@ export async function createOAuthIssuer(env, ID, issuer, username, email, access
 		.bind(ID, issuer, username ?? null, email ?? null, access_token ?? null, refresh_token ?? null, userID)
 		.run();
 }
-export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
+export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token, userType="basic"){
 	if(!issuer)
 		throw new Error("issuer is null");
 	if(!userID)
@@ -64,10 +79,10 @@ export async function createUser(env, userID, username, email, issuer, id, issue
 		throw new Error("issuer id is null");
     await env.OTSO_DB
         .prepare(`
-            INSERT INTO Users (userID, authenticationMethods, email, username)
+            INSERT INTO Users (userID, authenticationMethods, email, username, userType)
                 VALUES (?, ?, ?, ?);
             `)
-        .bind(userID, issuer, email ?? null, username ?? null) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
+        .bind(userID, issuer, email ?? null, username ?? null, userType) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
         .run();
     await env.OTSO_DB
         .prepare(`
