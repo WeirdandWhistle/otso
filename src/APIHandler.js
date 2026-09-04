@@ -30,6 +30,10 @@ export async function handle(request, env) {
 			return await userControl.createAccount(request, env, KV);
 		} else if (pathname.startsWith('/api/account/info')) {
 			return await userInfo.info(request, env, KV);
+		} else if (pathname.startsWith('/api/admin/info')) {
+			return await userInfo.adminInfo(request, env, KV);
+		} else if (pathname.startsWith('/api/admin/userLookup')) {
+			return await userInfo.adminUserLookup(request, env, KV);
 		} else if (pathname.startsWith('/api/account/authorizeApp')) {
 			return await appControl.authorizeApp(request, env, KV);
 		} else if (pathname.startsWith('/api/account/revokeApp')) {

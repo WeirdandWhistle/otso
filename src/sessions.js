@@ -122,3 +122,7 @@ export async function getScopesFromAccessToken(request, env) {
 	if (tokens.expires <= Date.now() / 1000) return null;
 	return tokens;
 }
+export function isAdmin(userType){
+	if(userType == 'admin' || userType == 'owner') return true;
+	return false;
+}

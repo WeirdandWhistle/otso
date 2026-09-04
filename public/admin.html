@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Page | Otso</title>
+    <link rel="stylesheet" href="/stylesheet.css">
+</head>
+<body>
+    <div class="nav-bar-button" onclick="openNav()">
+		&#8801;
+	</div>
+	<div class="nav-bar" id="navBar">
+		<a onclick="closeNav()" id="closeNavBarButton">&times;</a>
+		<a href="/account">Account Page</a>
+		<a href="#users">Users</a>
+
+		<a onclick="logout()">Logout</a>
+	</div>
+
+    <h1 style="display: flex; justify-content: center; align-items: center;">OTSO Admin Page</h1>
+    <main>
+        <div>
+            <a id="users" href="#users">User List</a><br>
+            <div id="user-list" class="buttonList">
+                <!-- <button onclick="viewUser('userid')" style="width: 100%; display: flex; justify-content: flex-start;">whynotjava</button> -->
+            </div>
+            <div id="modal-user-details" class="modal" style="z-index: 10;">
+                <div class="modal-content">
+                    <span id="modalclose-user-details" class="close-modal">&times;</span>
+                    <h1>User Details          :</h1>
+                    <pre>username             :</pre><input id="modaldata-user-details-username"><br>
+                    <pre>userID               :</pre><input id="modaldata-user-details-userID"><br>
+                    <pre>email                :</pre><input id="modaldata-user-details-email"><br>
+                    <pre>created_at           :</pre><input id="modaldata-user-details-created_at"><br>
+                    <pre>authenticationMethods:</pre><input id="modaldata-user-details-authenticationMethods"><br>
+
+                    <div id="sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+			        	<!-- <div class="sessionCard">
+			        		<span><b>Firefox</b> on <i>Linux</i></span><br>					
+			        		<div style="font-size: 0.85rem;">
+			        			<span>Version: 153.0</span><br>
+			        			<span>Arcitchure: 64</span><br>
+			        			<span>ip: 127.0.0.1</span><br>
+			        			<span>first seen: now</span><br>
+			        		</div>
+			        		<button onclick="revokeSession()">Revoke</button>
+			        	</div> -->
+			        </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+<script>
+    
+    async function init() {
+        load();
+        const res = await fetch("/api/admin/info",{
+            headers:{
+                'CSRFToken': await getCSRFToken(),
+            },
+        });
+        loadError(res);
+        const json = await res.json();
+
+        const userListDiv = document.getElementById('user-list');
+        for(const i in json.userList){
+            userListDiv.insertAdjacentHTML('beforeend',`<button onclick="viewUser('${json.userList[i].userID}')" id="user-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`);
+            document.getElementById(`user-view-button-${i}`).innerText = json.userList[i].username;
+        }
+
+        addCopyToClipboard();
+        unload();
+    }
+
+    async function viewUser(userID) {
+
+        const prefix = 'modaldata-user-details-';
+        const ids = ['username','userID','created_at','authenticationMethods', 'email'];
+
+        openModal('user-details', ()=>{
+            ids.forEach((value)=>{
+                console.log("set blank")
+                document.getElementById(prefix+value).value = '';
+            });
+        });
+        load();
+        const res = await fetch("/api/admin/userLookup?userID="+userID,{
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+            }
+        });
+        loadError(res);
+        unload();
+        const user = await res.json();
+
+        
+        ids.forEach((value)=>{
+            console.log();
+            document.getElementById(prefix+value).value = user[value];
+        });
+    }
+
+    async function loadError(res) {
+        if(res.ok) return;
+        unload();
+        const see = confirm("Looks like an error occured. Would you like to see it?\nIf you press 'cancel' things will proably break.");
+        if(see){
+            document.open();
+            document.write(await res.text());
+            document.close();
+            throw new Error('idfk');
+        }
+    }
+
+    let fivesectimeout;
+    function load(){
+        document.body.style.cursor = 'wait';
+        const maxTime = 5 * 1000;
+        fivesectimeout = setTimeout(()=>alert('Sorry but it appears one of our services is taking a very long time. Please try again.'), maxTime);
+    }
+    function unload(){
+        clearTimeout(fivesectimeout);
+        document.body.style.cursor = 'default';
+    }
+
+    async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			doError(res);
+			console.log("CSRF error: ", await res.text());
+			if(res.status == 401)
+				window.location = '/login';
+			
+			return;
+		}
+		return await res.text();
+	}
+
+    const openModal = (id, onclose=null) => {
+        const div = document.getElementById(`modal-${id}`);
+        div.style.display = 'block';
+
+        const closeModalInternal = () => {
+            div.style.display = 'none';
+            if(onclose != null) onclose();
+        }
+        document.getElementById(`modalclose-${id}`).onclick = closeModalInternal;
+        window.onclick = (event)=>{
+			if(event.target == div)
+				closeModalInternal();
+		}
+        return closeModalInternal;
+    };
+    const closeModal = (id) => document.getElementById(`modal-${id}`).display = 'none';
+
+    const navBar = document.getElementById("navBar");
+	function openNav(){
+			navBar.style.width = "300px";
+		navBar.style.border = "1px var(--color) solid";
+	}
+	function closeNav(){
+		navBar.style.width = "0";
+		setTimeout(()=>{
+			navBar.style.border = "";
+		}, 300);
+	}
+    function addCopyToClipboard(){
+		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
+			let id = node.id;
+			if(!id){
+				id=makeid(20);
+				node.id = id;
+			}
+			node.insertAdjacentHTML("afterend",`<span onclick="copyById(this,'${id}')" style="cursor: pointer;">${imgSVG}</span>`);
+	});
+	}
+    async function copyById(target, id){
+		const text = document.getElementById(id).value;
+		await navigator.clipboard.writeText(text);
+		const temp = target.innerHTML;
+		target.innerHTML = `&#10003;`;
+		setTimeout(()=>target.innerHTML = temp, 500);
+	}
+
+    init();
+</script>
+</html>

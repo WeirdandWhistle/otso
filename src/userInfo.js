@@ -11,6 +11,66 @@ import { parseScopes, stringifyScopes } from './parseScopes.js';
 import * as db from './databaseInteraction.js';
 import * as session from './sessions.js';
 
+
+export async function adminInfo(request, env, KV) {
+	if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. Wrong CSRFToken.', { status: 401 });
+	const user = await session.getUserIfSession(request, env);
+	if (!user) return new Response('401 Unauthorized. User is not logged in.', { status: 401 });
+	if (!session.isAdmin(user.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
+
+	const out = {};
+
+	out.userList = await packUserList(env);
+
+	return new Response(JSON.stringify(out), {
+		status: 200,
+	});
+}
+async function packUserList(env) {
+	const list = await db.getUserList(env);
+	const out = [];
+	for(const user of list){
+		out.push({username: user.username, userID: user.userID});
+	}
+	return out;
+}
+export async function adminUserLookup(request, env, KV) {
+	if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. Wrong CSRFToken.', { status: 401 });
+	const user = await session.getUserIfSession(request, env);
+	if (!user) return new Response('401 Unauthorized. User is not logged in.', { status: 401 });
+	if (!session.isAdmin(user.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
+
+	const query = new URL(request.url).searchParams;
+	let json = {};
+	json.userID = query.get("userID");
+	if(!json.userID)return new Response('400 Bad Request. No UserID was sent.', {status:400});
+
+	const targetUser = await db.getUserFromUserID(env, json.userID);
+	if (!targetUser) return new Response('404 Not Found. User does not exist.', { status: 404 });
+	const out = {};
+
+	out.userID = targetUser.userID;
+	out.username = targetUser.username;
+	out.userType = targetUser.userType;
+	out.email = targetUser.email;
+	out.created_at = targetUser.created_at;
+	out.authenticationMethods = targetUser.authenticationMethods;
+	
+	out.authorizedApps = [];
+	const scopes = parseScopes(targetUser.authorizedApps);
+	scopes.forEach((value, key, map)=>out.authorizedApps.push(key));
+
+	const sessions = await db.getSessionsFromUserID(env, targetUser.userID) ?? [];
+	out.sessions = [];
+	sessions.forEach((v)=>{
+		const data = JSON.parse(v.sessionData);
+		data.created_at = v.created_at;
+		out.sessions.push(data);
+	});
+
+	return new Response(JSON.stringify(out));
+}
+
 export async function info(request, env, KV) {
 	if (request.method == 'OPTIONS') {
 		return new Response('', {
@@ -62,6 +122,7 @@ async function privateInfo(request, env) {
 	out.created_at = user.created_at;
 	out.loginMethods = user.authenticationMethods.split(' ');
 	out.authorizedApps = [];
+	out.isAdmin = session.isAdmin(user.userType);
 
 	const apps = parseScopes(user.authorizedApps);
 	apps.forEach(async (value, key) => {

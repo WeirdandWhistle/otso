@@ -55,11 +55,19 @@ export async function updateUser(env, userID, authenticationMethods, authorizedA
 		.run();
 }
 export async function firstUser(env){
-	const raw = env.OTSO_DB
+	const raw = await env.OTSO_DB
 		.prepare(`SELECT 1 FROM Users LIMIT 1;`)
 		.bind()
 		.run();
 	return raw.results.length <= 0;
+}
+export async function getUserList(env){
+	const raw = await env.OTSO_DB
+		.prepare(`SELECT userID, username FROM Users LIMIT 1000;`)
+		.bind()
+		.run();
+	if(raw.results.length <= 0) return null;
+	return raw.results;
 }
 export async function createOAuthIssuer(env, ID, issuer, username, email, access_token, refresh_token, userID) {
 	await env.OTSO_DB
@@ -80,7 +88,7 @@ export async function createUser(env, userID, username, email, issuer, id, issue
     await env.OTSO_DB
         .prepare(`
             INSERT INTO Users (userID, authenticationMethods, email, username, userType)
-                VALUES (?, ?, ?, ?);
+                VALUES (?, ?, ?, ?, ?);
             `)
         .bind(userID, issuer, email ?? null, username ?? null, userType) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
         .run();
@@ -332,7 +340,7 @@ export async function KVClean(env){
 		.prepare(`
 			DELETE FROM KV WHERE ttl < ?;
 			`)
-		.bind(Math.floor(Date.now()))
+		.bind(Math.floor(Date.now()/1000))
 		.run();
 }
 export async function deleteKV(env, k){
