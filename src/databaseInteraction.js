@@ -139,7 +139,7 @@ export async function createSession(env, sessionID, userID, sessionData){
 export async function getSessionsFromUserID(env, userID){
 	const raw = await env.OTSO_DB
 		.prepare(`
-			SELECT * FROM Sessions WHERE userID=?;
+			SELECT * FROM Sessions WHERE userID=? LIMIT 50;
 			`)
 		.bind(userID)
 		.run();
@@ -147,12 +147,12 @@ export async function getSessionsFromUserID(env, userID){
 		return null;
 	return raw.results;
 }
-export async function deleteSessionFromTimestamp(env, timestamp) {
+export async function deleteSessionFromTimestamp(env, timestamp, userID) {
 	await env.OTSO_DB
 		.prepare(`
-			DELETE FROM Sessions WHERE created_at=? LIMIT 1;
+			DELETE FROM Sessions WHERE created_at=? AND userID=? LIMIT 1;
 			`)
-		.bind(timestamp)
+		.bind(timestamp, userID)
 		.run();
 }
 export async function deleteSession(env, sessionID){

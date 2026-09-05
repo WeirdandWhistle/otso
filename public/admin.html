@@ -33,8 +33,9 @@
                     <pre>email                :</pre><input id="modaldata-user-details-email"><br>
                     <pre>created_at           :</pre><input id="modaldata-user-details-created_at"><br>
                     <pre>authenticationMethods:</pre><input id="modaldata-user-details-authenticationMethods"><br>
+                    <pre>Number of sessions   :</pre><input id="modaldata-user-details-session-length"><br>
 
-                    <div id="sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                    <div id="modaldata-user-details-sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
 			        	<!-- <div class="sessionCard">
 			        		<span><b>Firefox</b> on <i>Linux</i></span><br>					
 			        		<div style="font-size: 0.85rem;">
@@ -46,6 +47,8 @@
 			        		<button onclick="revokeSession()">Revoke</button>
 			        	</div> -->
 			        </div>
+                    <div id="modaldata-user-details-button-list" style="width: 100%; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 1rem;">
+                    </div>
                 </div>
             </div>
         </div>
@@ -77,12 +80,15 @@
 
         const prefix = 'modaldata-user-details-';
         const ids = ['username','userID','created_at','authenticationMethods', 'email'];
+        const buttonList = document.getElementById(prefix+'button-list');
 
+        buttonList.childNodes.forEach((e)=>e.remove());
         openModal('user-details', ()=>{
             ids.forEach((value)=>{
-                console.log("set blank")
                 document.getElementById(prefix+value).value = '';
             });
+            document.getElementById(prefix+'sessionList').childNodes.forEach((e)=>e.remove());
+            buttonList.childNodes.forEach((e)=>e.remove());
         });
         load();
         const res = await fetch("/api/admin/userLookup?userID="+userID,{
@@ -94,11 +100,66 @@
         unload();
         const user = await res.json();
 
-        
         ids.forEach((value)=>{
-            console.log();
             document.getElementById(prefix+value).value = user[value];
         });
+
+        document.getElementById(prefix+'session-length').value = user.sessions.length;
+
+        user.sessions.forEach((v)=>{
+            const session = v;
+            const html = `
+                <div class="sessionCard" style="position: relative;">
+					<span><b>${session.browser}</b> on <i>${session.os.family}</i></span><br>		
+					<div style="font-size: 0.85rem;">
+						<span>Version: ${session.browserVersion}</span><br>
+						<span>Arcitchure: ${session.os.architecture}</span><br>
+						<span>ip: ${session.ip}</span><br>
+						<span>created:<br>${session.created_at}</span><br>
+					</div>
+					<button onclick="revokeSession(this, '${session.created_at}', '${user.userID}')">Revoke</button>
+				</div>`;
+            document.getElementById(prefix+'sessionList').insertAdjacentHTML('beforeend',html);
+        });
+
+        buttonList.insertAdjacentHTML('beforeend', `<button onclick="deleteUser('${user.userID}')" class="deleteButton">Delete User</button>`);
+    }
+    async function revokeSession(button, timestamp, userID) {
+        load();
+        const res = fetch("/api/account/revokeSession",{
+            method: 'DELETE',
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+                'Authorization': 'admin'
+            },
+            body:JSON.stringify({
+                userID: userID,
+                timestamp: timestamp,
+            }),
+        });
+        unload();
+        button.parentElement.remove();
+    }
+    async function deleteUser(userID) {
+        if(!confirm("Are you sure you want to delete this user? This can NOT be undone.")) return;
+        const num1 = Math.floor(Math.random()* 100);
+        const num2 = Math.floor(Math.random()* 100);
+        const result = num1 + num2;
+        if(prompt(`Ok then... Solve: ${num1} + ${num2}`) != result) {
+            alert("wrong.");
+            return;
+        }
+        load();
+        const res = fetch("/api/account/delete",{
+            method: 'DELETE',
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+                'Authorization': 'admin'
+            },
+            body: userID,
+        });
+        unload();
+        alert(await res.text());
     }
 
     async function loadError(res) {
@@ -129,10 +190,11 @@
 			method: 'PUT',
 		});
 		if(!res.ok){
-			doError(res);
-			console.log("CSRF error: ", await res.text());
-			if(res.status == 401)
+            if(res.status == 401)
 				window.location = '/login';
+            try { loadError(res); } catch (error) { }
+			console.log("CSRF error: ", await res.text());
+			
 			
 			return;
 		}

@@ -170,7 +170,7 @@ button:hover {
 .deleteButton:hover {
 	color: var(--color);
 	background-color: #ff0000aa;
-	border: none;
+	border: 1px #00000000 solid;
 	box-shadow: none;
 }
 .deleteButton:disabled {

@@ -61,10 +61,12 @@ export async function adminUserLookup(request, env, KV) {
 	scopes.forEach((value, key, map)=>out.authorizedApps.push(key));
 
 	const sessions = await db.getSessionsFromUserID(env, targetUser.userID) ?? [];
+	console.log("sessions",sessions);
 	out.sessions = [];
 	sessions.forEach((v)=>{
 		const data = JSON.parse(v.sessionData);
 		data.created_at = v.created_at;
+		console.log("data",data);
 		out.sessions.push(data);
 	});
 

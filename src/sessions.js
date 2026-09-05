@@ -85,9 +85,18 @@ export async function revokeSessionAPI(request, env, KV) {
 	const user = await getUserIfSession(request, env);
 	if (!user) return new Response(`401 Unauthorized. Session is invalid.`, { status: 401 });
 	if (request.method != 'DELETE') return new Response(`405 Method Not Allowed. Try using 'DELETE'.`, { status: 405 });
-	const timestamp = await request.text();
+	const text = await request.text();
 
-	await db.deleteSessionFromTimestamp(env, timestamp);
+	let userID = user.userID;
+	let timestamp = text;
+	if(request.headers.get("Authorization").toLowerCase() == 'admin'){
+		if(!isAdmin(user.userType)) return new Response(`401 Unauthorized. User is not an Admin.`, { status: 401 });
+		const json = JSON.parse(text);
+		userID = json.userID;
+		timestamp = json.timestamp;
+	}
+
+	await db.deleteSessionFromTimestamp(env, timestamp, userID);
 
 	return new Response('OK');
 }

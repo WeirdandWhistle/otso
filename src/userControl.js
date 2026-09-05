@@ -67,6 +67,12 @@ export async function deleteAccount(request, env, KV) {
 		await KV.put(`deleteAccount.${user.userID}`, { challenge: `${chall}${enge}`.toUpperCase(), letter: letter }, 60);
 		return new Response(enge);
 	} else if (request.method == 'DELETE') {
+		if(request.headers.get('Authorization') == 'admin'){
+			if(!session.isAdmin(user.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
+			const userID = await request.text();
+			await db.deleteUser(env, userID);
+			return new Response('lets take a walk.');
+		}
 		const nonce = await request.text();
 		if (!nonce) return new Response('bad', { status: 400 });
 		const data = await KV.get(`deleteAccount.${user.userID}`);
