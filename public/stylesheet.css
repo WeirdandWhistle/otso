@@ -189,3 +189,9 @@ button:hover {
 	width: fit-content;
 	padding-right: 0.5rem;
 }
+select {
+	color: var(--color);
+	background-color: var(--background-color);
+	border: 1px var(--color) solid;
+	padding: 0.1rem;
+}

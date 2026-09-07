@@ -20,7 +20,14 @@
     <h1 style="display: flex; justify-content: center; align-items: center;">OTSO Admin Page</h1>
     <main>
         <div>
-            <a id="users" href="#users">User List</a><br>
+            <a id="users" href="#users">User List</a>
+            <input placeholder="Search for a User" id="user-search">
+            Sort By:
+            <select id="user-search-sortby" style="position: relative; bottom: 3px;">
+                <option value="username" selected>Username</option>
+                <option value="userid" selected>UserID</option>
+            </select>
+            <br>
             <div id="user-list" class="buttonList">
                 <!-- <button onclick="viewUser('userid')" style="width: 100%; display: flex; justify-content: flex-start;">whynotjava</button> -->
             </div>
@@ -56,6 +63,39 @@
 </body>
 <script>
     
+    let userList = null;
+    const userSearchInput = document.getElementById('user-search');
+    const userSearchSortBy = document.getElementById('user-search-sortby');
+    userSearchInput.addEventListener('input', async (event)=>{
+        if(event.key != 'Enter'){
+        } else {
+            userList = await pullUserList();
+        }
+        
+        let sortUsers;
+        if(userSearchSortBy.value == 'username') sortUsers = searchByUsername;
+        else if(userSearchSortBy.value == 'userid') sortUsers = searchByUserID;
+        else sortUsers = searchByUsername;
+        const sortedList = sortUsers(userList, userSearchInput.value.trim());
+
+        loadUserList(sortedList);
+    });
+    const searchByUsername = (list, query) => [...list].filter(user => user.username.toLowerCase().trim().includes(query.toLowerCase().trim()));
+    const searchByUserID = (list, query) => [...list].filter(user => user.userID.trim().includes(query));
+    function loadUserList(list){
+        const userListDiv = document.getElementById('user-list');
+        userListDiv.textContent = '';
+        for(const i in list){
+            userListDiv.insertAdjacentHTML('beforeend', userButtonFromUserID(list[i].userID, i));
+            document.getElementById(`user-view-button-${i}`).innerText = list[i].username;
+        }
+    }
+    const userButtonFromUserID = (userID, i) => `<button onclick="viewUser('${userID}')" id="user-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`
+    async function pullUserList(){
+        if(userList != null) return userList;
+        // TODO: setup API userlist pull
+    }
+
     async function init() {
         load();
         const res = await fetch("/api/admin/info",{
@@ -66,11 +106,8 @@
         loadError(res);
         const json = await res.json();
 
-        const userListDiv = document.getElementById('user-list');
-        for(const i in json.userList){
-            userListDiv.insertAdjacentHTML('beforeend',`<button onclick="viewUser('${json.userList[i].userID}')" id="user-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`);
-            document.getElementById(`user-view-button-${i}`).innerText = json.userList[i].username;
-        }
+        userList = json.userList;
+        loadUserList(userList);
 
         addCopyToClipboard();
         unload();
@@ -239,6 +276,15 @@
 			}
 			node.insertAdjacentHTML("afterend",`<span onclick="copyById(this,'${id}')" style="cursor: pointer;">${imgSVG}</span>`);
 	});
+	}
+    function makeid(length) {
+		var result           = '';
+		var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var charactersLength = characters.length;
+		for ( var i = 0; i < length; i++ ) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
 	}
     async function copyById(target, id){
 		const text = document.getElementById(id).value;
