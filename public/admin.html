@@ -25,7 +25,7 @@
             Sort By:
             <select id="user-search-sortby" style="position: relative; bottom: 3px;">
                 <option value="username" selected>Username</option>
-                <option value="userid" selected>UserID</option>
+                <option value="userid" selected>User ID</option>
             </select>
             <br>
             <div id="user-list" class="buttonList">
@@ -59,11 +59,24 @@
                 </div>
             </div>
         </div>
+        <div>
+            <a href="#clients">Client List <b style="display: none;">theres a certain other client list i would like to see...</b></a>
+            <input id="client-search" placeholder="Search for a Client">
+            Sort By:
+            <select id="client-search-sortby">
+                <option value="username">Client Name</option>
+                <option value="clientid">Client ID</option>
+            </select>
+            <div id="client-list" class="buttonList">
+
+            </div>
+        </div>
     </main>
 </body>
 <script>
     
     let userList = null;
+    let clientList = null;
     const userSearchInput = document.getElementById('user-search');
     const userSearchSortBy = document.getElementById('user-search-sortby');
     userSearchInput.addEventListener('input', async (event)=>{
@@ -74,23 +87,55 @@
         
         let sortUsers;
         if(userSearchSortBy.value == 'username') sortUsers = searchByUsername;
-        else if(userSearchSortBy.value == 'userid') sortUsers = searchByUserID;
+        else if(userSearchSortBy.value == 'userid') sortUsers = searchByID;
         else sortUsers = searchByUsername;
         const sortedList = sortUsers(userList, userSearchInput.value.trim());
 
         loadUserList(sortedList);
     });
-    const searchByUsername = (list, query) => [...list].filter(user => user.username.toLowerCase().trim().includes(query.toLowerCase().trim()));
-    const searchByUserID = (list, query) => [...list].filter(user => user.userID.trim().includes(query));
+    const clientSearchInput = document.getElementById('client-search');
+    const clientSearchSortBy = document.getElementById('client-search-sortby');
+    clientSearchInput.addEventListener('input', async (event)=>{
+        if(event.key != 'Enter'){
+        } else {
+            // client = await pullUserList();
+        }
+        
+        let sortUsers;
+        if(clientSearchSortBy.value == 'username') sortUsers = searchByUsername;
+        else if(clientSearchSortBy.value == 'clientid') sortUsers = searchByID;
+        else sortUsers = searchByUsername;
+        const sortedList = sortUsers(clientList, clientSearchInput.value.trim());
+
+        loadClientList(sortedList);
+    });
+    const searchByUsername = (list, query) => [...list].filter(obj => obj.username.toLowerCase().trim().includes(query.toLowerCase().trim()));
+    const searchByID = (list, query) => [...list].filter(obj => obj.id.trim().includes(query));
     function loadUserList(list){
         const userListDiv = document.getElementById('user-list');
         userListDiv.textContent = '';
         for(const i in list){
-            userListDiv.insertAdjacentHTML('beforeend', userButtonFromUserID(list[i].userID, i));
+            userListDiv.insertAdjacentHTML('beforeend', userButtonFromUserID(list[i].id, i));
             document.getElementById(`user-view-button-${i}`).innerText = list[i].username;
+        }
+        if(list.length == 0){
+            userListDiv.innerText = 'Sorry, there are no users that match your search';
+        }
+    }
+    function loadClientList(list){
+        console.log('cl',list);
+        const clientListDiv = document.getElementById('client-list');
+        clientListDiv.textContent = '';
+        for(const i in list){
+            clientListDiv.insertAdjacentHTML('beforeend', clientButtonFromClientID(list[i].id, i));
+            document.getElementById(`client-view-button-${i}`).innerText = list[i].username;
+        }
+        if(list.length == 0){
+            clientListDiv.innerText = 'Sorry, there are no clients that match your search';
         }
     }
     const userButtonFromUserID = (userID, i) => `<button onclick="viewUser('${userID}')" id="user-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`
+    const clientButtonFromClientID = (client_id, i) => `<button onclick="viewClient('${client_id}')" id="client-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`
     async function pullUserList(){
         if(userList != null) return userList;
         // TODO: setup API userlist pull
@@ -109,6 +154,9 @@
         userList = json.userList;
         loadUserList(userList);
 
+        clientList = json.clientList;
+        loadClientList(clientList);
+
         addCopyToClipboard();
         unload();
     }
@@ -119,12 +167,12 @@
         const ids = ['username','userID','created_at','authenticationMethods', 'email'];
         const buttonList = document.getElementById(prefix+'button-list');
 
-        buttonList.childNodes.forEach((e)=>e.remove());
+        buttonList.textContent = '';
         openModal('user-details', ()=>{
             ids.forEach((value)=>{
                 document.getElementById(prefix+value).value = '';
             });
-            document.getElementById(prefix+'sessionList').childNodes.forEach((e)=>e.remove());
+            document.getElementById(prefix+'sessionList').textContent = '';
             buttonList.childNodes.forEach((e)=>e.remove());
         });
         load();
@@ -187,7 +235,7 @@
             return;
         }
         load();
-        const res = fetch("/api/account/delete",{
+        const res = await fetch("/api/account/delete",{
             method: 'DELETE',
             headers: {
                 'CSRFToken': await getCSRFToken(),

@@ -241,6 +241,14 @@ export async function updateOAuthClientSecretHash(env, client_id, client_secret_
 		.bind(client_secret_hash, client_id)
 		.run()
 }
+export async function getOAuthClientList(env) {
+	const raw = await env.OTSO_DB
+		.prepare(`SELECT * FROM OAuthClients LIMIT 1000;`)
+		.bind()
+		.run();
+	if(raw.results.length == 0) return null;
+	return raw.results;
+}
 // OAuthTokens
 export async function createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id) {
     await env.OTSO_DB
@@ -326,13 +334,14 @@ export async function getKV(env, k){
 	// console.log("GET key",k);
 	const temp = returnResults(await env.OTSO_DB
 		.prepare(`
-			SELECT v FROM KV WHERE k=? LIMIT 1;
+			SELECT ttl, v FROM KV WHERE k=? LIMIT 1;
 			`)
 		.bind(k)
 		.run());
 	// console.log("from db", temp);
 	if(!temp)
 		return null;
+	if(temp.ttl < Date.now()/1000) return null;
 	return temp.v;
 }
 export async function KVClean(env){

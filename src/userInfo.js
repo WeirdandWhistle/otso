@@ -21,6 +21,7 @@ export async function adminInfo(request, env, KV) {
 	const out = {};
 
 	out.userList = await packUserList(env);
+	out.clientList = await packClientList(env);
 
 	return new Response(JSON.stringify(out), {
 		status: 200,
@@ -30,8 +31,14 @@ async function packUserList(env) {
 	const list = await db.getUserList(env);
 	const out = [];
 	for(const user of list){
-		out.push({username: user.username, userID: user.userID});
+		out.push({username: user.username, id: user.userID});
 	}
+	return out;
+}
+async function packClientList(env) {
+	const list = await db.getOAuthClientList(env) ?? [];
+	const out = [];
+	list.forEach(client => out.push({username: client.name, id: client.client_id}));
 	return out;
 }
 export async function adminUserLookup(request, env, KV) {
