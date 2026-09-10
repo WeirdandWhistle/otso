@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Page | Otso</title>
+    <link rel="stylesheet" href="/stylesheet.css">
+</head>
+<body>
+    <div class="nav-bar-button" onclick="openNav()">
+		&#8801;
+	</div>
+	<div class="nav-bar" id="navBar">
+		<a onclick="closeNav()" id="closeNavBarButton">&times;</a>
+		<a href="/account">Account Page</a>
+		<a href="#users">Users</a>
+
+		<a onclick="logout()">Logout</a>
+	</div>
+
+    <h1 style="display: flex; justify-content: center; align-items: center;">OTSO Admin Page</h1>
+    <main>
+        <div>
+            <a id="users" href="#users">User List</a>
+            <input placeholder="Search for a User" id="user-search">
+            Sort By:
+            <select id="user-search-sortby" style="position: relative; bottom: 3px;">
+                <option value="username" selected>Username</option>
+                <option value="userid" selected>User ID</option>
+            </select>
+            <br>
+            <div id="user-list" class="buttonList">
+                <!-- <button onclick="viewUser('userid')" style="width: 100%; display: flex; justify-content: flex-start;">whynotjava</button> -->
+            </div>
+            <div id="modal-user-details" class="modal" style="z-index: 10;">
+                <div class="modal-content">
+                    <span id="modalclose-user-details" class="close-modal">&times;</span>
+                    <h1>User Details          :</h1>
+                    <pre>username             :</pre><input id="modaldata-user-details-username"><br>
+                    <pre>userID               :</pre><input id="modaldata-user-details-userID"><br>
+                    <pre>email                :</pre><input id="modaldata-user-details-email"><br>
+                    <pre>created_at           :</pre><input id="modaldata-user-details-created_at"><br>
+                    <pre>authenticationMethods:</pre><input id="modaldata-user-details-authenticationMethods"><br>
+                    <pre>Number of sessions   :</pre><input id="modaldata-user-details-session-length"><br>
+
+                    <div id="modaldata-user-details-sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+			        	<!-- <div class="sessionCard">
+			        		<span><b>Firefox</b> on <i>Linux</i></span><br>					
+			        		<div style="font-size: 0.85rem;">
+			        			<span>Version: 153.0</span><br>
+			        			<span>Arcitchure: 64</span><br>
+			        			<span>ip: 127.0.0.1</span><br>
+			        			<span>first seen: now</span><br>
+			        		</div>
+			        		<button onclick="revokeSession()">Revoke</button>
+			        	</div> -->
+			        </div>
+                    <div id="modaldata-user-details-button-list" style="width: 100%; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 1rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <a href="#clients">Client List <b style="display: none;">theres a certain other client list i would like to see...</b></a>
+            <input id="client-search" placeholder="Search for a Client">
+            Sort By:
+            <select id="client-search-sortby">
+                <option value="username">Client Name</option>
+                <option value="clientid">Client ID</option>
+            </select>
+            <div id="client-list" class="buttonList"></div>
+            
+            <div id="modal-client-details" class="modal" style="z-index: 10;">
+                <div class="modal-content">
+                    <span id="modalclose-client-details" class="close-modal">&times;</span>
+                    <h1>Client Details:</h1>
+                    <pre>name         :</pre><input id="modaldata-client-details-name"><br>
+                    <pre>client ID    :</pre><input id="modaldata-client-details-client_id"><br>
+                    <pre>owner user ID:</pre><input id="modaldata-client-details-owner_id"><br>
+                    <pre>created_at   :</pre><input id="modaldata-client-details-created_at"><br>
+                    <pre>client type  :</pre><input id="modaldata-client-details-client_type"><br>
+                    <div id="modaldata-client-details-redirect_uri-list">
+                        <!-- <pre>redirect uri :</pre><input id="modaldata-client-details-redirect_uri"><br> -->                    
+                    </div>
+                    <div id="modaldata-user-details-button-list" style="width: 100%; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 1rem;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+<script>
+    
+    let userList = null;
+    let clientList = null;
+    const userSearchInput = document.getElementById('user-search');
+    const userSearchSortBy = document.getElementById('user-search-sortby');
+    userSearchInput.addEventListener('input', async (event)=>{
+        if(event.key != 'Enter'){
+        } else {
+            userList = await pullUserList();
+        }
+        
+        let sortUsers;
+        if(userSearchSortBy.value == 'username') sortUsers = searchByUsername;
+        else if(userSearchSortBy.value == 'userid') sortUsers = searchByID;
+        else sortUsers = searchByUsername;
+        const sortedList = sortUsers(userList, userSearchInput.value.trim());
+
+        loadUserList(sortedList);
+    });
+    const clientSearchInput = document.getElementById('client-search');
+    const clientSearchSortBy = document.getElementById('client-search-sortby');
+    clientSearchInput.addEventListener('input', async (event)=>{
+        if(event.key != 'Enter'){
+        } else {
+            // client = await pullUserList();
+        }
+        
+        let sortUsers;
+        if(clientSearchSortBy.value == 'username') sortUsers = searchByUsername;
+        else if(clientSearchSortBy.value == 'clientid') sortUsers = searchByID;
+        else sortUsers = searchByUsername;
+        const sortedList = sortUsers(clientList, clientSearchInput.value.trim());
+
+        loadClientList(sortedList);
+    });
+    const searchByUsername = (list, query) => [...list].filter(obj => obj.username.toLowerCase().trim().includes(query.toLowerCase().trim()));
+    const searchByID = (list, query) => [...list].filter(obj => obj.id.trim().includes(query));
+    function loadUserList(list){
+        const userListDiv = document.getElementById('user-list');
+        userListDiv.textContent = '';
+        for(const i in list){
+            userListDiv.insertAdjacentHTML('beforeend', userButtonFromUserID(list[i].id, i));
+            document.getElementById(`user-view-button-${i}`).innerText = list[i].username;
+        }
+        if(list.length == 0){
+            userListDiv.innerText = 'Sorry, there are no users that match your search';
+        }
+    }
+    function loadClientList(list){
+        console.log('cl',list);
+        const clientListDiv = document.getElementById('client-list');
+        clientListDiv.textContent = '';
+        for(const i in list){
+            clientListDiv.insertAdjacentHTML('beforeend', clientButtonFromClientID(list[i].id, i));
+            document.getElementById(`client-view-button-${i}`).innerText = list[i].username;
+        }
+        if(list.length == 0){
+            clientListDiv.innerText = 'Sorry, there are no clients that match your search';
+        }
+    }
+    const userButtonFromUserID = (userID, i) => `<button onclick="viewUser('${userID}')" id="user-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`
+    const clientButtonFromClientID = (client_id, i) => `<button onclick="viewClient('${client_id}')" id="client-view-button-${i}" style="width: 100%; display: flex; justify-content: flex-start;"></button>`
+    async function pullUserList(){
+        if(userList != null) return userList;
+        // TODO: setup API userlist pull
+    }
+
+    async function init() {
+        load();
+        const res = await fetch("/api/admin/info",{
+            headers:{
+                'CSRFToken': await getCSRFToken(),
+            },
+        });
+        loadError(res);
+        const json = await res.json();
+
+        userList = json.userList;
+        loadUserList(userList);
+
+        clientList = json.clientList;
+        loadClientList(clientList);
+
+        addCopyToClipboard();
+        unload();
+    }
+
+    async function viewUser(userID) {
+
+        const prefix = 'modaldata-user-details-';
+        const ids = ['username','userID','created_at','authenticationMethods', 'email'];
+        const buttonList = document.getElementById(prefix+'button-list');
+
+        buttonList.textContent = '';
+        openModal('user-details', ()=>{
+            ids.forEach((value)=>{
+                document.getElementById(prefix+value).value = '';
+            });
+            document.getElementById(prefix+'sessionList').textContent = '';
+            buttonList.childNodes.forEach((e)=>e.remove());
+        });
+        load();
+        const res = await fetch("/api/admin/userLookup?userID="+userID,{
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+            }
+        });
+        loadError(res);
+        unload();
+        const user = await res.json();
+
+        ids.forEach((value)=>{
+            document.getElementById(prefix+value).value = user[value];
+        });
+
+        document.getElementById(prefix+'session-length').value = user.sessions.length;
+
+        user.sessions.forEach((v)=>{
+            const session = v;
+            const html = `
+                <div class="sessionCard" style="position: relative;">
+					<span><b>${session.browser}</b> on <i>${session.os.family}</i></span><br>		
+					<div style="font-size: 0.85rem;">
+						<span>Version: ${session.browserVersion}</span><br>
+						<span>Arcitchure: ${session.os.architecture}</span><br>
+						<span>ip: ${session.ip}</span><br>
+						<span>created:<br>${session.created_at}</span><br>
+					</div>
+					<button onclick="revokeSession(this, '${session.created_at}', '${user.userID}')">Revoke</button>
+				</div>`;
+            document.getElementById(prefix+'sessionList').insertAdjacentHTML('beforeend',html);
+        });
+
+        buttonList.insertAdjacentHTML('beforeend', `<button onclick="deleteUser('${user.userID}')" class="deleteButton">Delete User</button>`);
+    }
+    async function viewClient(cleint_id) {
+        load();
+        const res = await fetch(`/api/oauth2/client?client_id=${cleint_id}`,{
+            method: 'GET',
+            headers:{
+                'Authorization' : 'admin',
+                'CSRFToken' : await getCSRFToken(),
+            }
+        });
+        loadError(res);
+        const client  = await res.json();
+
+        const prefix = 'modaldata-client-details-';
+        const ids = ['client_id','name','owner_id','created_at','client_type'];
+         ids.forEach((value)=>{
+            document.getElementById(prefix+value).value = client[value];
+        });
+        client.redirect_uri.forEach((e, i)=>{
+            document.getElementById('modaldata-client-details-redirect_uri-list').insertAdjacentHTML('beforeend',`<pre>redirect uri :</pre><input id="modaldata-client-details-redirect_uri-${i}"><br>`);
+            document.getElementById(`modaldata-client-details-redirect_uri-${i}`).value = e;
+            console.log('e',e)
+        });
+        
+        openModal('client-details');
+
+        unload();
+    }
+    async function revokeSession(button, timestamp, userID) {
+        load();
+        const res = fetch("/api/account/revokeSession",{
+            method: 'DELETE',
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+                'Authorization': 'admin'
+            },
+            body:JSON.stringify({
+                userID: userID,
+                timestamp: timestamp,
+            }),
+        });
+        unload();
+        button.parentElement.remove();
+    }
+    async function deleteUser(userID) {
+        if(!confirm("Are you sure you want to delete this user? This can NOT be undone.")) return;
+        const num1 = Math.floor(Math.random()* 100);
+        const num2 = Math.floor(Math.random()* 100);
+        const result = num1 + num2;
+        if(prompt(`Ok then... Solve: ${num1} + ${num2}`) != result) {
+            alert("wrong.");
+            return;
+        }
+        load();
+        const res = await fetch("/api/account/delete",{
+            method: 'DELETE',
+            headers: {
+                'CSRFToken': await getCSRFToken(),
+                'Authorization': 'admin'
+            },
+            body: userID,
+        });
+        unload();
+        alert(await res.text());
+    }
+
+    async function loadError(res) {
+        if(res.ok) return;
+        unload();
+        const see = confirm("Looks like an error occured. Would you like to see it?\nIf you press 'cancel' things will proably break.");
+        if(see){
+            document.open();
+            document.write(await res.text());
+            document.close();
+            throw new Error('idfk');
+        }
+    }
+
+    let fivesectimeout;
+    function load(){
+        document.body.style.cursor = 'wait';
+        const maxTime = 5 * 1000;
+        fivesectimeout = setTimeout(()=>alert('Sorry but it appears one of our services is taking a very long time. Please try again.'), maxTime);
+    }
+    function unload(){
+        clearTimeout(fivesectimeout);
+        document.body.style.cursor = 'default';
+    }
+
+    async function getCSRFToken(){
+		const res = await fetch("/api/CSRFToken",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+            if(res.status == 401)
+				window.location = '/login';
+            try { loadError(res); } catch (error) { }
+			console.log("CSRF error: ", await res.text());
+			
+			
+			return;
+		}
+		return await res.text();
+	}
+
+    const openModal = (id, onclose=null) => {
+        const div = document.getElementById(`modal-${id}`);
+        div.style.display = 'block';
+
+        const closeModalInternal = () => {
+            div.style.display = 'none';
+            if(onclose != null) onclose();
+        }
+        document.getElementById(`modalclose-${id}`).onclick = closeModalInternal;
+        window.onclick = (event)=>{
+			if(event.target == div)
+				closeModalInternal();
+		}
+        return closeModalInternal;
+    };
+    const closeModal = (id) => document.getElementById(`modal-${id}`).display = 'none';
+
+    const navBar = document.getElementById("navBar");
+	function openNav(){
+			navBar.style.width = "300px";
+		navBar.style.border = "1px var(--color) solid";
+	}
+	function closeNav(){
+		navBar.style.width = "0";
+		setTimeout(()=>{
+			navBar.style.border = "";
+		}, 300);
+	}
+    function addCopyToClipboard(){
+		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
+			let id = node.id;
+			if(!id){
+				id=makeid(20);
+				node.id = id;
+			}
+			node.insertAdjacentHTML("afterend",`<span onclick="copyById(this,'${id}')" style="cursor: pointer;">${imgSVG}</span>`);
+	});
+	}
+    function makeid(length) {
+		var result           = '';
+		var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var charactersLength = characters.length;
+		for ( var i = 0; i < length; i++ ) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
+	}
+    async function copyById(target, id){
+		const text = document.getElementById(id).value;
+		await navigator.clipboard.writeText(text);
+		const temp = target.innerHTML;
+		target.innerHTML = `&#10003;`;
+		setTimeout(()=>target.innerHTML = temp, 500);
+	}
+
+    init();
+</script>
+</html>

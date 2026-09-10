@@ -36,15 +36,38 @@ export async function getUserFromEmail(env, email){
 	return raw.results;
 
 }
-export async function updateUser(env, userID, authenticationMethods, authorizedApps, email, username) {
+export async function updateUser(env, userID, authenticationMethods, authorizedApps, email, username, userType=null) {
+	const userTypeSQL = userType != null ? `userType=?,` : '';
+	let params = [];
+	params.push(authenticationMethods ?? '');
+	params.push(authorizedApps ?? '');
+	params.push(email ?? null);
+	if(userType != null) params.push(userType);
+	params.push(username);
+	params.push(userID);
 	await env.OTSO_DB
 		.prepare(`
 			UPDATE Users
-			SET authenticationMethods=?, authorizedApps=?, email=?, username=?
+			SET authenticationMethods=?, authorizedApps=?, email=?, ${userTypeSQL} username=?
 			WHERE userID=?;
 			`)
-		.bind(authenticationMethods ?? '', authorizedApps ?? '', email ?? null, username, userID)
+		.bind(...params)
 		.run();
+}
+export async function firstUser(env){
+	const raw = await env.OTSO_DB
+		.prepare(`SELECT 1 FROM Users LIMIT 1;`)
+		.bind()
+		.run();
+	return raw.results.length <= 0;
+}
+export async function getUserList(env){
+	const raw = await env.OTSO_DB
+		.prepare(`SELECT userID, username FROM Users LIMIT 1000;`)
+		.bind()
+		.run();
+	if(raw.results.length <= 0) return null;
+	return raw.results;
 }
 export async function createOAuthIssuer(env, ID, issuer, username, email, access_token, refresh_token, userID) {
 	await env.OTSO_DB
@@ -55,7 +78,7 @@ export async function createOAuthIssuer(env, ID, issuer, username, email, access
 		.bind(ID, issuer, username ?? null, email ?? null, access_token ?? null, refresh_token ?? null, userID)
 		.run();
 }
-export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token){
+export async function createUser(env, userID, username, email, issuer, id, issuerUsername, issuerEmail, access_token, refresh_token, userType="basic"){
 	if(!issuer)
 		throw new Error("issuer is null");
 	if(!userID)
@@ -64,10 +87,10 @@ export async function createUser(env, userID, username, email, issuer, id, issue
 		throw new Error("issuer id is null");
     await env.OTSO_DB
         .prepare(`
-            INSERT INTO Users (userID, authenticationMethods, email, username)
-                VALUES (?, ?, ?, ?);
+            INSERT INTO Users (userID, authenticationMethods, email, username, userType)
+                VALUES (?, ?, ?, ?, ?);
             `)
-        .bind(userID, issuer, email ?? null, username ?? null) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
+        .bind(userID, issuer, email ?? null, username ?? null, userType) // id, issuer, issuerUsername, issuerEmail, access_token, refresh_token, userID
         .run();
     await env.OTSO_DB
         .prepare(`
@@ -116,7 +139,7 @@ export async function createSession(env, sessionID, userID, sessionData){
 export async function getSessionsFromUserID(env, userID){
 	const raw = await env.OTSO_DB
 		.prepare(`
-			SELECT * FROM Sessions WHERE userID=?;
+			SELECT * FROM Sessions WHERE userID=? LIMIT 50;
 			`)
 		.bind(userID)
 		.run();
@@ -124,12 +147,12 @@ export async function getSessionsFromUserID(env, userID){
 		return null;
 	return raw.results;
 }
-export async function deleteSessionFromTimestamp(env, timestamp) {
+export async function deleteSessionFromTimestamp(env, timestamp, userID) {
 	await env.OTSO_DB
 		.prepare(`
-			DELETE FROM Sessions WHERE created_at=? LIMIT 1;
+			DELETE FROM Sessions WHERE created_at=? AND userID=? LIMIT 1;
 			`)
-		.bind(timestamp)
+		.bind(timestamp, userID)
 		.run();
 }
 export async function deleteSession(env, sessionID){
@@ -218,6 +241,14 @@ export async function updateOAuthClientSecretHash(env, client_id, client_secret_
 		.bind(client_secret_hash, client_id)
 		.run()
 }
+export async function getOAuthClientList(env) {
+	const raw = await env.OTSO_DB
+		.prepare(`SELECT * FROM OAuthClients LIMIT 1000;`)
+		.bind()
+		.run();
+	if(raw.results.length == 0) return null;
+	return raw.results;
+}
 // OAuthTokens
 export async function createOAuthToken(env, access_token, expires, scopes, refresh_token, userID, client_id) {
     await env.OTSO_DB
@@ -303,13 +334,14 @@ export async function getKV(env, k){
 	// console.log("GET key",k);
 	const temp = returnResults(await env.OTSO_DB
 		.prepare(`
-			SELECT v FROM KV WHERE k=? LIMIT 1;
+			SELECT ttl, v FROM KV WHERE k=? LIMIT 1;
 			`)
 		.bind(k)
 		.run());
 	// console.log("from db", temp);
 	if(!temp)
 		return null;
+	if(temp.ttl < Date.now()/1000) return null;
 	return temp.v;
 }
 export async function KVClean(env){
@@ -317,7 +349,7 @@ export async function KVClean(env){
 		.prepare(`
 			DELETE FROM KV WHERE ttl < ?;
 			`)
-		.bind(Math.floor(Date.now()))
+		.bind(Math.floor(Date.now()/1000))
 		.run();
 }
 export async function deleteKV(env, k){

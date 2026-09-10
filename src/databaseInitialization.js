@@ -1,8 +1,8 @@
 export async function init(env) {
-	await env.OTSO_DB.prepare(databaseInitString).bind().run(); 
+	await env.OTSO_DB.prepare(databaseInitString).bind().run();
 }
-export async function remove(env){
-    await env.OTSO_DB.prepare(databaseDeleteString).bind().run();
+export async function remove(env) {
+	await env.OTSO_DB.prepare(databaseDeleteString).bind().run();
 }
 const databaseDeleteString = `
 DROP TABLE IF EXISTS Sessions;
@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS Users (
     authorizedApps TEXT DEFAULT '',
     email TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    username TEXT NOT NULL
+    username TEXT NOT NULL,
+    userType TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Sessions (

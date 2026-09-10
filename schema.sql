@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS Users (
     authenticationMethods TEXT DEFAULT '',
     authorizedApps TEXT DEFAULT '',
     email TEXT,
-    username TEXT NOT NULL
+    username TEXT NOT NULL,
+    userType TEXT,
 );
 
 DROP TABLE IF EXISTS Sessions;
