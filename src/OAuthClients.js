@@ -11,19 +11,21 @@ import {
 } from './randomData.js';
 
 export async function client(request, env, KV) {
-	if (request.method != 'POST' && request.method != 'DELETE' && request.method != 'PATCH' && request.method != 'PUT')
-		return new Response("405 Method Not Allowed. Try using the 'POST' or 'DELETE' or 'PATCH' or 'PUT method.", { status: 405 });
+	if (request.method != 'POST' && request.method != 'DELETE' && request.method != 'PATCH' && request.method != 'PUT' && request.method != 'GET')
+		return new Response("405 Method Not Allowed. Try using the 'POST' or 'DELETE' or 'PATCH' or 'PUT' or 'GET' method.", { status: 405 });
 	if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. Wrong CSRFToken.', { status: 401 });
 
 	const authHeader = request.headers.get('Authorization');
 	if (!authHeader) return new Response('401 Unauthorized. Must use some sort of authorization.', { status: 401 });
 	const authType = authHeader.split(' ')[0].toLowerCase();
-	if (authType != 'session') return new Response("401 Unauthorized. Try using the 'Session' authorization header.", { status: 401 });
-
+	if (authType != 'session' && authType != 'admin') return new Response("401 Unauthorized. Try using the 'Session' authorization header.", { status: 401 });
+	
 	const user = await session.getUserIfSession(request, env);
 	if (!user) return new Response('401 Unauthorized. That session does not exist or is invalid.', { status: 401 });
+	if(authType == 'admin' && !session.isAdmin(user.userType)) return new Response("401 Unauthorized. Tried to authorized as 'admin' but user is not an Admin.", { status: 401 });
 
-	const json = await request.json();
+	let json;
+	if(request.method != 'GET') json = await request.json();
 	if (request.method == 'POST') {
 		if (!json.name || !json.redirect_uri || !json.client_type)
 			return new Response('400 Bad Request. Missing a parameter. Either name, redirect_uri, or client_type.', { status: 400 });
@@ -108,5 +110,20 @@ export async function client(request, env, KV) {
 				client_secret: client_secret,
 			}),
 		);
+	} else if(request.method == 'GET'){
+		if(!session.isAdmin(user.userType)) return new Response('401 Unauthorized. Sorry this method is currently reserved for admims.', { status: 401 });
+		const client_id = new URL(request.url).searchParams.get('client_id');
+		const client = await db.getOAuthClientFromClientID(env, client_id);
+		if(!client) return new Response("404 Not Found. Client does not exist.", {status: 404});
+		
+		const out = {};
+		out.redirect_uri = client.redirection_URIs.split(' ');
+		out.name = client.name;
+		out.client_id = client.client_id;
+		out.created_at = client.created_at;
+		out.owner_id = client.ownerUserID;
+		out.client_type = client.client_type;
+
+		return new Response(JSON.stringify(out));
 	}
 }

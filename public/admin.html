@@ -67,8 +67,22 @@
                 <option value="username">Client Name</option>
                 <option value="clientid">Client ID</option>
             </select>
-            <div id="client-list" class="buttonList">
-
+            <div id="client-list" class="buttonList"></div>
+            
+            <div id="modal-client-details" class="modal" style="z-index: 10;">
+                <div class="modal-content">
+                    <span id="modalclose-client-details" class="close-modal">&times;</span>
+                    <h1>Client Details:</h1>
+                    <pre>name         :</pre><input id="modaldata-client-details-name"><br>
+                    <pre>client ID    :</pre><input id="modaldata-client-details-client_id"><br>
+                    <pre>owner user ID:</pre><input id="modaldata-client-details-owner_id"><br>
+                    <pre>created_at   :</pre><input id="modaldata-client-details-created_at"><br>
+                    <pre>client type  :</pre><input id="modaldata-client-details-client_type"><br>
+                    <div id="modaldata-client-details-redirect_uri-list">
+                        <!-- <pre>redirect uri :</pre><input id="modaldata-client-details-redirect_uri"><br> -->                    
+                    </div>
+                    <div id="modaldata-user-details-button-list" style="width: 100%; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 1rem;"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -208,6 +222,33 @@
         });
 
         buttonList.insertAdjacentHTML('beforeend', `<button onclick="deleteUser('${user.userID}')" class="deleteButton">Delete User</button>`);
+    }
+    async function viewClient(cleint_id) {
+        load();
+        const res = await fetch(`/api/oauth2/client?client_id=${cleint_id}`,{
+            method: 'GET',
+            headers:{
+                'Authorization' : 'admin',
+                'CSRFToken' : await getCSRFToken(),
+            }
+        });
+        loadError(res);
+        const client  = await res.json();
+
+        const prefix = 'modaldata-client-details-';
+        const ids = ['client_id','name','owner_id','created_at','client_type'];
+         ids.forEach((value)=>{
+            document.getElementById(prefix+value).value = client[value];
+        });
+        client.redirect_uri.forEach((e, i)=>{
+            document.getElementById('modaldata-client-details-redirect_uri-list').insertAdjacentHTML('beforeend',`<pre>redirect uri :</pre><input id="modaldata-client-details-redirect_uri-${i}"><br>`);
+            document.getElementById(`modaldata-client-details-redirect_uri-${i}`).value = e;
+            console.log('e',e)
+        });
+        
+        openModal('client-details');
+
+        unload();
     }
     async function revokeSession(button, timestamp, userID) {
         load();
