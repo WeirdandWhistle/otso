@@ -23,6 +23,7 @@
 		<a href="#login-methods">Login Methods</a>
 		<a href="#authorized-apps">Authorized Apps</a>
 		<a href="#sessions">Sessions</a>
+		<a href="#signin-links">Sign-in Links</a>
 		<a href="#clients">My OAuth Clients</a>
 		<a href="#danger-zone">Danger Zone</a>
 
@@ -66,6 +67,18 @@
 					<button onclick="revokeSession()">Revoke</button>
 				</div> -->
 			</div>
+		</div>
+		<div>
+			<a id="signin-links" href="#signin-links">Sign-in Links</a><br>
+			<span>You can use <i>Sign-in Links</i> to sign-in on a differnt device without going through a sign-in provider.
+			Just click a link or scan a QR code and your in.</span><br>
+			<button onclick="getSigninLink()">Get Sign-in link</button>
+			<div id="modal-signin-links" class="modal" style="z-index: 10;">
+                <div class="modal-content">
+                    <span id="modalclose-signin-links" class="close-modal">&times;</span>
+					<h1>Sign-in Links:</h1>
+					<pre>Your sign-in link:</pre><input id="modaldata-signin-links-link"><br>
+            </div>
 		</div>
 		<div>
 			<a id="clients" href="#clients">OAuth Clients</a><br>
@@ -570,6 +583,26 @@
 	}
 	init();
 
+	async function getSigninLink() {
+		const id = 'signin-links';
+		const prefix = 'modaldata-'+id+'-';
+		const linkDisplay = document.getElementById(prefix+'link');
+
+		const res = await fetch("/api/links/signin",{
+			headers:{
+				'CSRFToken' : await getCSRFToken(),
+			},
+		});
+		if(!res.ok) doError(res);
+		const link = (await res.json()).url;
+
+		linkDisplay.value = link;
+
+		openModal(id, function onclose(){
+			linkDisplay.value = '';
+		});
+	}
+
 	// Source - https://stackoverflow.com/a/1026087
 	function capitalizeFirstLetter(val) {
 		return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -687,8 +720,24 @@
 				document.write(await res.text());
 				document.close();
 			}
-		throw new Error("block all feature code.")
+		throw new Error("block all future code.")
 	}
+	const openModal = (id, onclose=null) => {
+        const div = document.getElementById(`modal-${id}`);
+        div.style.display = 'block';
+
+        const closeModalInternal = () => {
+            div.style.display = 'none';
+            if(onclose != null) onclose();
+        }
+        document.getElementById(`modalclose-${id}`).onclick = closeModalInternal;
+        window.onclick = (event)=>{
+			if(event.target == div)
+				closeModalInternal();
+		}
+        return closeModalInternal;
+    };
+    const closeModal = (id) => document.getElementById(`modal-${id}`).display = 'none';
 
 </script>
 

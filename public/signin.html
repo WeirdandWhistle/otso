@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/stylesheet.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign-in Page | Otso</title>
+</head>
+<body>
+    
+    <div id="deleteMe" style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <h1>Thank you for choosing <b>Otso</b>.</h1>
+        <p>Please wait while your request is being processed.</p>
+    </div>
+
+    <main style="display: none;" id="main">
+        <h1 id="tokenexpired" style="display: none;">Your sign-in link has expired.</h1>
+    </main>
+    <h1 style="display: none;" id="nope"></h1>
+
+    <script>
+        const url = new URL(window.location);
+        function process(){
+            document.getElementById('deleteMe').style.display = 'none';
+            document.getElementById('main').style.display = 'flex';
+        }
+        async function a() {
+            const token = url.searchParams.get('t');
+            if(!token) {
+                nope('token is null');
+                return;
+            }
+            const res = await fetch('/api/links/getsession/'+token,{
+                headers:{
+                    'CSRFTokenNL' : await getCSRFTokenNL(),
+                }
+            });
+            process();
+            if(res.status == 401){
+                document.getElementById('tokenexpired').style.display = 'block';
+                return;
+            }
+            if(!res.ok){
+                doError(res);
+                return;
+            }
+            window.location = '/account';
+        }
+        async function init() {
+            switch(url.searchParams.get('via')){
+                case 'a':
+                    await a();
+                    break;
+                default:
+                    notAType();
+                    break;
+            }
+        }
+        init();
+        function nope(error){
+            document.getElementById('nope').style.display = 'block';
+            document.getElementById('nope').innerText = error;
+            document.getElementById('deleteMe').style.display = 'none';
+            document.getElementById('main').style.display = 'none';
+        }
+        function notAType(){
+            nope('Sorry we cant process your request.');
+        }
+
+
+        async function getCSRFTokenNL(){
+		const res = await fetch("/api/CSRFTokenNL",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			doError(res);
+			console.log("CSRF error: ", await res.text());			
+			return;
+		}
+		return await res.text();
+	    }
+        const doError = async (res) => {
+            if(res.ok) return;
+			document.open();
+			document.write(await res.text());
+			document.close();
+		throw new Error("block all feature code.")
+	    }
+    </script>
+</body>
+</html>

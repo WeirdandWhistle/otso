@@ -5,7 +5,7 @@ import * as APIHandler from './APIHandler.js';
 import * as databaseInitializer from './databaseInitialization.js';
 
 let databaseInitialized = false;
-let deleteDatabaseOnStart = true;
+let deleteDatabaseOnStart = false;
 
 export default {
 	async fetch(request, env, ctx) {

@@ -72,7 +72,7 @@ export async function useCSRFToken(request, env, KV) {
 	if (!token) return false;
 	const data = await KV.get(`CSRFToken.${token}`);
 	if (!data) return false;
-	await KV.remove(token);
+	await KV.remove(`CSRFToken.${token}`);
 	const sessionID = getSessionID(request);
 	if (!sessionID) return false;
 	const user = await getUserIfSession(request, env);
@@ -100,12 +100,12 @@ export async function revokeSessionAPI(request, env, KV) {
 
 	return new Response('OK');
 }
-export async function CSRFTokenEndpoint(request, env, KV) {
+function forceThisOrigin(request){
 	if (request.method == 'OPTIONS') {
 		return new Response(null, {
 			status: 204,
 			headers: {
-				'Access-Control-Allow-Origin': env.HOST,
+				'Access-Control-Allow-Origin': new URL(request).origin,
 				'Access-Control-Allow-Methods': 'OPTIONS, PUT',
 			},
 		});
@@ -113,6 +113,11 @@ export async function CSRFTokenEndpoint(request, env, KV) {
 	if (request.method != 'PUT') return new Response('405 Method Not Allowed.', { status: 405 });
 	const referer = new URL(request.headers.get('Referer'));
 	if (new URL(request.url).origin != referer.origin) return new Response('401 Unauthorized.', { status: 401 });
+	return null;
+}
+export async function CSRFTokenEndpoint(request, env, KV) {
+	const forceOrigin = forceThisOrigin(request);
+	if(forceOrigin) return forceOrigin;
 
 	const sessionID = getSessionID(request);
 	if (!sessionID) return new Response('401 Unauthorized. No session.', { status: 401 });
@@ -122,6 +127,23 @@ export async function CSRFTokenEndpoint(request, env, KV) {
 	const token = await createCSRFToken(KV, user.userID, sessionID);
 
 	return new Response(token);
+}
+const CSRFTokenNoLoginValue = (request) => request.headers.get('User-Agent') + request.headers.get('CF-Connecting-IP') + request.headers.get('Host'); 
+export async function CSRFTokenNoLoginEndpoint(request, env, KV){
+	const forceOrigin = forceThisOrigin(request);
+	if(forceOrigin) return forceOrigin;
+	const token = generateSecureChars(24);
+	await KV.put('CSRFTokenNL.'+token, CSRFTokenNoLoginValue(request),15);
+	return new Response(token);
+}
+export async function useCSRFTokenNoLogin(request, env, KV) {
+	const token = request.headers.get('CSRFTokenNL');
+	const data = await KV.get('CSRFTokenNL.'+token);
+	if(!data) return false;
+	await KV.remove('CSRFTokenNL.'+token);
+	// console.log('ctnl',CSRFTokenNoLoginValue(request),'data',data,'same',CSRFTokenNoLoginValue(request)==data);
+	if(!await safeCompareString(data, CSRFTokenNoLoginValue(request))) return false;
+	return true;
 }
 export async function getScopesFromAccessToken(request, env) {
 	if (request.headers.get('Authorization').split(' ').length < 2) return null;

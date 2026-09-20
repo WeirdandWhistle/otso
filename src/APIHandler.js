@@ -12,6 +12,7 @@ import * as userControl from './userControl.js';
 import * as userInfo from './userInfo.js';
 import * as OAuthIssuer from './OAuthIssuer.js';
 import * as OIDCEndpoints from './OIDCEndpoints.js';
+import * as signinLinks from './signinLinks.js';
 import * as jwt from './JWT.js';
 import cypto from 'crypto';
 
@@ -56,8 +57,14 @@ export async function handle(request, env, ctx) {
 			return await OAuthProvider.token(request, env, KV, OIDC_KEY_PAIR);
 		} else if (pathname.startsWith('/api/oauth2/tempToken')) {
 			return await OAuthProvider.tempToken(request, env, KV);
-		} else if (pathname.startsWith('/api/CSRFToken')) {
+		} else if(pathname.startsWith('/api/links/signin')){ // the one issued via the account page
+			return await signinLinks.getSigninLink(request, env, KV);
+		} else if(pathname.startsWith('/api/links/getsession/')){ // the one issued via the account pages
+			return await signinLinks.getSigninGetSession(request, env, KV);
+		} else if (pathname === '/api/CSRFToken') {
 			return await session.CSRFTokenEndpoint(request, env, KV);
+		} else if (pathname === '/api/CSRFTokenNL') {
+			return await session.CSRFTokenNoLoginEndpoint(request, env, KV);
 		}
 	} else if (pathname.startsWith('/.well-known')) {
 		OIDC_KEY_PAIR = await OIDCEndpoints.getActiveKeypair(env, OIDC_KEY_PAIR);
