@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS Users (
     email TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     username TEXT NOT NULL,
-    userType TEXT
+    userType TEXT,
+    emailVerified BIT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS Sessions (

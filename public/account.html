@@ -35,7 +35,7 @@
 				<pre>Username:</pre><input id="username"><br>
 				<pre>User ID :</pre><input id="userID"><br>
 				<pre>Email   :</pre><input id="email">
-				<pre>Verifyed:</pre><input value="false"><br>
+				<pre>Verified:</pre><input id="emailVerified"><br>
 				<pre>Created :</pre><input id="createdAt"><br>
 		</div>
 		<div>
@@ -332,6 +332,7 @@
 		document.getElementById("username").value = userInfo.username;
 		document.getElementById("email").value = userInfo.email;
 		document.getElementById("userID").value = userInfo.userID;
+		document.getElementById("emailVerified").value = userInfo.emailVerified;
 		document.getElementById("createdAt").value = dataTimeString(new Date(userInfo.created_at));
 
 		document.getElementById("login-methods-count").innerText = userInfo.loginMethods.length;

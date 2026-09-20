@@ -17,7 +17,7 @@ import cypto from 'crypto';
 
 let OIDC_KEY_PAIR = null;
 
-export async function handle(request, env) {
+export async function handle(request, env, ctx) {
 	KV.init(env);
 	const pathname = new URL(request.url).pathname;
 	if (pathname.startsWith('/oauth/') || pathname.startsWith('/callback')) {
@@ -27,7 +27,7 @@ export async function handle(request, env) {
 	if (pathname.startsWith('/api/')) {
 		if (await ratelimit(KV, `${request.headers.get('CF-Connecting-IP')}`, 45)) return new Response('429 Too Many Requets', { status: 429 });
 		if (pathname.startsWith('/api/account/createAccount')) {
-			return await userControl.createAccount(request, env, KV);
+			return await userControl.createAccount(request, env, KV, ctx);
 		} else if (pathname.startsWith('/api/account/info')) {
 			return await userInfo.info(request, env, KV);
 		} else if (pathname.startsWith('/api/admin/info')) {

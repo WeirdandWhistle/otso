@@ -1,8 +1,9 @@
 import * as session from './sessions.js';
 import * as db from './databaseInteraction.js';
+import * as emailAPI from './email.js';
 import { generateRandomString, base64SHA256, validUsername, correctUsername, generateUserID, generateSecureChars } from './randomData.js';
 
-export async function createAccount(request, env, KV) {
+export async function createAccount(request, env, KV, ctx) {
 	if (request.method != 'POST') return new Response('405 Method Not Allowed', { status: 405 });
 	const postJson = await request.json();
 	const state = postJson.state;
@@ -34,7 +35,7 @@ export async function createAccount(request, env, KV) {
 	const userID = generateUserID();
 	const isAdmin = await db.firstUser(env);
 	await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token, isAdmin ? 'admin' : null);
-
+	// ctx.waitUntil(emailAPI.updateDBWithVerifiedEmail(env, userID, email));
 	const headers = new Headers();
 
 	const sessionID = await session.issueSession(env, userID, request.headers);

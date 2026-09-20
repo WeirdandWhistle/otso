@@ -108,7 +108,14 @@ export async function setAuthorizedApp(env, userID, authorizedApps) {
         .bind(authorizedApps, userID)
         .run();
 }
-
+export async function setEmailVerified(env, userID, bit){
+	await env.OTSO_DB
+    	.prepare(`
+            UPDATE Users SET emailVerified=? WHERE userID=?;
+        `)
+        .bind(bit, userID)
+        .run();
+}
 export async function getUserIDFromSession(env, sessionID) {
     const temp = returnResults(await env.OTSO_DB
         .prepare(`

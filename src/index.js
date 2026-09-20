@@ -5,7 +5,7 @@ import * as APIHandler from './APIHandler.js';
 import * as databaseInitializer from './databaseInitialization.js';
 
 let databaseInitialized = false;
-let deleteDatabaseOnStart = false;
+let deleteDatabaseOnStart = true;
 
 export default {
 	async fetch(request, env, ctx) {
@@ -25,7 +25,7 @@ export default {
 			req = request.clone();
 		}
 
-		const response = await APIHandler.handle(request, env);
+		const response = await APIHandler.handle(request, env, ctx);
 
 		if (logging) {
 			const res = response.clone();
