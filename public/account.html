@@ -78,6 +78,7 @@
                     <span id="modalclose-signin-links" class="close-modal">&times;</span>
 					<h1>Sign-in Links:</h1>
 					<pre>Your sign-in link:</pre><input id="modaldata-signin-links-link"><br>
+					<div id="modaldata-signin-links-qrcode" style="padding: 1rem;"></div>
             </div>
 		</div>
 		<div>
@@ -152,7 +153,7 @@
 			</div>
 		</div>
 	</main>
-
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script>
 	let deleteKey = 'abc123';
 	let deleteLetter = '0';
@@ -597,6 +598,8 @@
 		const link = (await res.json()).url;
 
 		linkDisplay.value = link;
+
+		const qrcode = new QRCode(prefix+'qrcode', link);
 
 		openModal(id, function onclose(){
 			linkDisplay.value = '';

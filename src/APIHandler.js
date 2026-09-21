@@ -59,6 +59,14 @@ export async function handle(request, env, ctx) {
 			return await OAuthProvider.tempToken(request, env, KV);
 		} else if(pathname.startsWith('/api/links/signin')){ // the one issued via the account page
 			return await signinLinks.getSigninLink(request, env, KV);
+		} else if(pathname.startsWith('/api/links/metadata/')){ 
+			return await signinLinks.getMetadata(request, env, KV);
+		} else if(pathname.startsWith('/api/links/approve/')){ 
+			return await signinLinks.approve(request, env, KV);
+		} else if(pathname.startsWith('/api/links/deny/')){ 
+			return await signinLinks.deny(request, env, KV);
+		} else if(pathname.startsWith('/api/links/websocket')){ // the one issued via the account pages
+			return await signinLinks.getWebsocket(request, env, KV);
 		} else if(pathname.startsWith('/api/links/getsession/')){ // the one issued via the account pages
 			return await signinLinks.getSigninGetSession(request, env, KV);
 		} else if (pathname === '/api/CSRFToken') {

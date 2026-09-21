@@ -47,6 +47,14 @@
 			"database_id": "fd9c72c9-7e96-4c0d-900f-0fb1c2951c56"
 		}
 	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SIGNIN_LINK_WEBSOCKET",
+				"class_name": "WebSocketDurableObject"
+			}
+		]
+	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

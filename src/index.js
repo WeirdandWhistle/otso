@@ -3,7 +3,8 @@ const userAgent = 'Otso-Guardian/1.0 (compatible; Otsobot/1.0; +https://otso.why
 
 import * as APIHandler from './APIHandler.js';
 import * as databaseInitializer from './databaseInitialization.js';
-
+import { WebSocketDurableObject } from './signinLinks.js';
+export { WebSocketDurableObject };
 let databaseInitialized = false;
 let deleteDatabaseOnStart = false;
 

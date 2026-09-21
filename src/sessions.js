@@ -136,8 +136,8 @@ export async function CSRFTokenNoLoginEndpoint(request, env, KV){
 	await KV.put('CSRFTokenNL.'+token, CSRFTokenNoLoginValue(request),15);
 	return new Response(token);
 }
-export async function useCSRFTokenNoLogin(request, env, KV) {
-	const token = request.headers.get('CSRFTokenNL');
+export async function useCSRFTokenNoLogin(request, env, KV, token=null) {
+	if(!token) token = request.headers.get('CSRFTokenNL');
 	const data = await KV.get('CSRFTokenNL.'+token);
 	if(!data) return false;
 	await KV.remove('CSRFTokenNL.'+token);

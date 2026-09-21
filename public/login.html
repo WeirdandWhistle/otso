@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Otso Guardian</title>
+    <link rel="stylesheet" href="/stylesheet.css">
     <style>
 
         :root{
@@ -15,7 +16,7 @@
             background-color: var(--background-color);
             color: var(--color);
         }
-        card{
+        ccard{
             --size: 2.5;
             display: flex;
             justify-content: center;
@@ -56,12 +57,18 @@
             color: transparent;
             background-clip: text;
         }
+        a{
+            font-weight: normal;
+        }
 
     </style>
 </head>
 <body>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+	
 	<b id="message" style="display:none; flex-direction: column; justify-content: center; align-items: center;"></b>
-    <card>
+    <ccard>
         <a class="log-in-with" href="/oauth/github">
             <svg data-component="Octicon" aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"></path></svg>
             Sign in with Github
@@ -97,12 +104,31 @@
             </svg>
             Sign in with Twitch
         </a>
-    </card>
+        <a class="log-in-with" onclick="qrcodeLogin()" style="color: var(--color);">
+            <div id="fake-qrcode" style="width: 24px; height: 24px;"></div>
+            <script>
+                const fakeQRCode = new QRCode('fake-qrcode',{
+                    text: 'qrcode',
+                    width: 24,
+                    height: 24
+                });
+            </script>
+            Sign in with QRCode
+        </a>
+        
+    </ccard>
+    <div id="modal-qrcode" class="modal" style="z-index: 10;">
+        <div class="modal-content">
+            <span id="modalclose-qrcode" class="close-modal">&times;</span>
+            <h1>Sign-in with QRCode or link:</h1>
+            <span>Scan or vist this link on a signed in device.</span><br>
+            <pre>url:</pre><input id="modaldata-qrcode-url"><br>
+            <div style="padding: 1rem;" id="modaldata-qrcode"></div>
+    </div>
 
     <script>
         const query = new URL(window.location).searchParams;
 				const addTo = query.toString();
-				console.log(addTo);
         if(addTo){
             for(let array = document.querySelectorAll("a"), i = 0; i<array.length; i++){
                 console.log(array[i]);
@@ -118,6 +144,111 @@
 					temp.innerText = query.get('message');
 					temp.style.display = 'flex';
 				}
+        const sleep = (ms) => new Promise((res)=>setTimeout(res, ms));
+        async function qrcodeLogin() {
+            const prefix = new URL(window.location).protocol === 'http:' ? 'ws:' : 'wss';
+            const domain = new URL(window.location).host;
+            const ws = new WebSocket(`${prefix}//${domain}/api/links/websocket?CSRFTokenNL=${await getCSRFTokenNL()}`);
+
+            ws.addEventListener('message', async (event)=>{
+                const data = JSON.parse(event.data);
+                switch(data.type){
+                    case 'heartbeat':
+                        ws.send(JSON.stringify({type:'heartbeat-return'}));
+                        break;
+                    case 'signinLink':
+                        document.getElementById('modaldata-qrcode-url').value = data.url;
+                        new QRCode('modaldata-qrcode',{
+                            width: 256,
+                            height: 256,
+                            text: data.url,
+                        });
+                        break;
+                    case 'denied':
+                        alert("requested denied!");
+                        break;
+                    case 'approved':
+                        fetch("/api/links/getsession/"+data.token,{
+                            headers:{
+                                'CSRFTokenNL': await getCSRFTokenNL(),
+                            }
+                        });
+                        break;
+                }
+            });
+
+            await new Promise((resolve, reject)=>{
+                ws.addEventListener('open', (event)=>{
+                    resolve();
+                });
+                ws.addEventListener('close', (event)=>{
+                    reject();
+                });
+            });
+            ws
+
+            ws.send(JSON.stringify({
+                type: 'getSigninLink',
+            }));
+
+            openModal('qrcode',()=>{});
+
+            // heartbeat loop
+            // let num = 0;
+            // while(num < 1000){
+            //     num++;
+            //     ws.send(JSON.stringify({type:'heartbeat'}));
+            //     console.log('heartbeat sent');
+            //     await sleep(10 * 1000);
+            // }
+        }
+        async function getCSRFTokenNL(){
+		const res = await fetch("/api/CSRFTokenNL",{
+			method: 'PUT',
+		});
+		if(!res.ok){
+			doError(res);
+			console.log("CSRF error: ", await res.text());			
+			return;
+		}
+		return await res.text();
+	    }
+        const openModal = (id, onclose=null) => {
+        const div = document.getElementById(`modal-${id}`);
+        div.style.display = 'block';
+
+        const closeModalInternal = () => {
+            div.style.display = 'none';
+            if(onclose != null) onclose();
+        }
+        document.getElementById(`modalclose-${id}`).onclick = closeModalInternal;
+        window.onclick = (event)=>{
+			if(event.target == div)
+				closeModalInternal();
+		}
+        return closeModalInternal;
+    };
+    const closeModal = (id) => document.getElementById(`modal-${id}`).display = 'none';
+    function addCopyToClipboard(){
+		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
+			let id = node.id;
+			if(!id){
+				id=makeid(20);
+				node.id = id;
+			}
+			node.insertAdjacentHTML("afterend",`<span onclick="copyById(this,'${id}')" style="cursor: pointer;">${imgSVG}</span>`);
+	});
+	}
+    async function copyById(target, id){
+		const text = document.getElementById(id).value;
+		await navigator.clipboard.writeText(text);
+		const temp = target.innerHTML;
+		target.innerHTML = `&#10003;`;
+		setTimeout(()=>target.innerHTML = temp, 500);
+	}
+    addCopyToClipboard();
+
     </script>
 </body>
 </html>
