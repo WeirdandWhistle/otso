@@ -165,14 +165,21 @@
                         });
                         break;
                     case 'denied':
+                        closeModal('qrcode');
                         alert("requested denied!");
                         break;
                     case 'approved':
-                        fetch("/api/links/getsession/"+data.token,{
+                        const res = await fetch("/api/links/getsession/"+data.token,{
                             headers:{
                                 'CSRFTokenNL': await getCSRFTokenNL(),
                             }
                         });
+                        doError(res);
+                        const json = await res.json();
+                        let redirect_to = new URL(window.location).searchParams.get("redirect_from");
+                        if(redirect_to) window.location = redirect_to;
+                        else if(json.redirect_to) window.location = json.redirect_to;
+                        else window.location = '/account';
                         break;
                 }
             });

@@ -42,7 +42,13 @@ export async function getSigninGetSession(request, env, KV) {
 	if (!userID) return new Response('401 Unauthorized. Token does not exist.', { status: 401 });
 
 	const sessionID = await session.issueSession(env, userID, request.headers);
-	return new Response('Session has been issued.', {
+    const out = {};
+
+    let OAuthState = new URL(request.url).searchParams.get("state"); 
+    if(OAuthState) OAuthState = await KV.get(`state.${OAuthState}`);
+    if(OAuthState) out.redirect_to = OAuthState.redirect_from;
+    
+	return new Response(JSON.stringify(out), {
 		status: 200,
 		headers: {
 			'Set-Cookie': session.getCookie(sessionID),
