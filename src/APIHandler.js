@@ -35,6 +35,10 @@ export async function handle(request, env, ctx) {
 			return await userInfo.adminInfo(request, env, KV);
 		} else if (pathname.startsWith('/api/admin/userLookup')) {
 			return await userInfo.adminUserLookup(request, env, KV);
+		} else if(pathname.startsWith('/api/admin/emailMasking/')){
+			return await userControl.setUserEmailMasking(request, env, KV, ctx);
+		} else if(pathname.startsWith('/api/account/verifyEmail')){
+			return await userControl.verifyUserEmail(request, env, KV, ctx);
 		} else if (pathname.startsWith('/api/account/authorizeApp')) {
 			return await appControl.authorizeApp(request, env, KV);
 		} else if (pathname.startsWith('/api/account/revokeApp')) {

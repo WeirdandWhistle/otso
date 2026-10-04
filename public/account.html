@@ -36,8 +36,10 @@
 				<pre>Username:</pre><input id="username"><br>
 				<pre>User ID :</pre><input id="userID"><br>
 				<pre>Email   :</pre><input id="email">
-				<pre>Verified:</pre><input id="emailVerified"><br>
+				<div style="display: none;" id="email-verify-container"><pre>Verified:</pre><input id="emailVerified"></div><br>
 				<pre>Created :</pre><input id="createdAt"><br>
+
+				<button id="verify-email-button" style="display: none; width: fit-content;">Verify Email Address</button>
 		</div>
 		<div>
 			<a id="login-methods" href="#login-methods">Login Methods</a><br>
@@ -323,6 +325,18 @@
 	closeClientButton.onclick = closeClientModal;
 
 
+	async function verifyEmail() {
+		const res = await fetch("/api/account/verifyEmail",{
+			method: 'POST',
+			headers:{
+				'CSRFToken':await getCSRFToken(),
+			}
+		});
+		doError(res);
+		const json = await res.json();
+		
+	}
+
 	async function init(){
 		const res = await fetch("/api/account/info",{
 			method: 'GET',
@@ -346,8 +360,16 @@
 		document.getElementById("username").value = userInfo.username;
 		document.getElementById("email").value = userInfo.email;
 		document.getElementById("userID").value = userInfo.userID;
-		document.getElementById("emailVerified").value = userInfo.emailVerified;
 		document.getElementById("createdAt").value = dataTimeString(new Date(userInfo.created_at));
+
+		if(userInfo.emailVerified != null){
+			document.getElementById('email-verify-container').style.display = 'inline';
+			document.getElementById("emailVerified").value = String(userInfo.emailVerified);
+			if(userInfo.emailVerified == false) {
+				document.getElementById('verify-email-button').style.display = 'block';
+				document.getElementById('verify-email-button').onclick = verifyEmail;
+			}
+		}
 
 		document.getElementById("login-methods-count").innerText = userInfo.loginMethods.length;
 		const loginList = document.getElementById("login-methods-list");

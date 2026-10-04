@@ -34,7 +34,19 @@ export async function createAccount(request, env, KV, ctx) {
 
 	const userID = generateUserID();
 	const isAdmin = await db.firstUser(env);
-	await db.createUser(env, userID, username, email, issuer, id, OAuthState.issuerInfo.username, email, access_token, refresh_token, isAdmin ? 'admin' : null);
+	await db.createUser(
+		env,
+		userID,
+		username,
+		email,
+		issuer,
+		id,
+		OAuthState.issuerInfo.username,
+		email,
+		access_token,
+		refresh_token,
+		isAdmin ? 'admin' : 'basic',
+	);
 	// ctx.waitUntil(emailAPI.updateDBWithVerifiedEmail(env, userID, email));
 	const headers = new Headers();
 
@@ -68,8 +80,8 @@ export async function deleteAccount(request, env, KV) {
 		await KV.put(`deleteAccount.${user.userID}`, { challenge: `${chall}${enge}`.toUpperCase(), letter: letter }, 60);
 		return new Response(enge);
 	} else if (request.method == 'DELETE') {
-		if(request.headers.get('Authorization') == 'admin'){
-			if(!session.isAdmin(user.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
+		if (request.headers.get('Authorization') == 'admin') {
+			if (!session.isAdmin(user.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
 			const userID = await request.text();
 			await db.deleteUser(env, userID);
 			return new Response('lets take a walk.');
@@ -86,4 +98,64 @@ export async function deleteAccount(request, env, KV) {
 		}
 		return new Response('**Bugs bunny no face** NO!', { status: 400 });
 	}
+}
+export async function setUserEmailMasking(request, env, KV, ctx) {
+	if (request.method != 'PATCH') return new Response('405 Method Not Allowed. Try using "patch".', { status: 405 });
+	if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. Wrong CSRFToken.', { status: 401 });
+	const loggedInUser = await session.getUserIfSession(request, env);
+	if (!loggedInUser) return new Response('401 Unauthorized. User is not logged in.', { status: 401 });
+	if (!session.isAdmin(loggedInUser.userType)) return new Response('401 Unauthorized. User is not an Admin.', { status: 401 });
+
+	const inputs = new URL(request.url).pathname.split('/');
+	if (inputs.length < 6) return new Response('400 Bad Request. 2 inputs must be present.', { status: 400 });
+	const userID = inputs[4];
+	const setEmailMasking = inputs[5] === 'true';
+
+	const user = await db.getUserFromUserID(env, userID);
+	if (user == null) return new Response('404 Not Found. User Does Not Exist.', { status: 404 });
+
+	const currentUserType = user.userType.split('-');
+	const currentEmailMasking = currentUserType.includes('emailMasking');
+	const updateUser = currentEmailMasking != setEmailMasking;
+	// console.log('updateuser',updateUser,'curenttype',currentUserType);
+
+	if (setEmailMasking) ctx.waitUntil(emailAPI.updateDBWithVerifiedEmail(env, userID, user.email));
+	else ctx.waitUntil(db.setEmailVerified(env, userID, null));
+
+	if (!updateUser) return new Response('200 OK', { status: 200 });
+
+	let newUserType = '';
+	currentUserType.forEach((v) => {
+		if (v == 'emailMasking' || v.trim() == '') return;
+		newUserType += v + '-';
+	});
+
+	if (setEmailMasking) newUserType += 'emailMasking';
+
+	await db.updateUser(env, userID, user.authenticationMethods, user.authorizedApps, user.email, user.username, newUserType);
+
+	return new Response('200 OK.');
+}
+export async function verifyUserEmail(request, env, KV, ctx) {
+	if (request.method != 'POST') return new Response('405 Method Not Allowed. Try using "POSR".', { status: 405 });
+	if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. CSRFToken is wrong.', { status: 401 });
+	const user = await session.getUserIfSession(request, env);
+	if (!user) return new Response('401 Unauthorized. Session is invalid.', { status: 401 });
+	if (!user.userType.split('-').includes('emailMasking'))
+		return new Response('401 Unauthorized. User is not allowed to verify an email.', { status: 401 });
+
+	const emailVerifyed = await emailAPI.isEmailVerified(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_EMAIL_TOKEN);
+	if(emailVerifyed) {
+		await db.setEmailVerified(env, user.userID, 1);
+		return new Response(JSON.stringify({
+			verify: true,
+			emailSent: false
+		}));
+	}
+
+	await emailAPI.verifyAddress(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_EMAIL_TOKEN, user.email);
+	return new Response(JSON.stringify({
+		verify: false,
+		emailSent: true,
+	}))
 }

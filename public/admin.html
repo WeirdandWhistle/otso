@@ -40,7 +40,11 @@
                     <pre>email                :</pre><input id="modaldata-user-details-email"><br>
                     <pre>created_at           :</pre><input id="modaldata-user-details-created_at"><br>
                     <pre>authenticationMethods:</pre><input id="modaldata-user-details-authenticationMethods"><br>
+                    <pre>User Type            :</pre><input id="modaldata-user-details-userType"><br>
                     <pre>Number of sessions   :</pre><input id="modaldata-user-details-session-length"><br>
+
+                    <!-- <input type="checkbox" id="modaldata-user-details-enable"> <span>Enable Email Masking</span> -->
+                    <input type="checkbox" id="modaldata-user-details-emailMasking"> <span>Enable Email Masking</span>
 
                     <div id="modaldata-user-details-sessionList" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
 			        	<!-- <div class="sessionCard">
@@ -95,6 +99,7 @@
     const userSearchSortBy = document.getElementById('user-search-sortby');
     userSearchInput.addEventListener('input', async (event)=>{
         if(event.key != 'Enter'){
+
         } else {
             userList = await pullUserList();
         }
@@ -111,6 +116,7 @@
     const clientSearchSortBy = document.getElementById('client-search-sortby');
     clientSearchInput.addEventListener('input', async (event)=>{
         if(event.key != 'Enter'){
+
         } else {
             // client = await pullUserList();
         }
@@ -175,16 +181,29 @@
         unload();
     }
 
+    async function toggleEmailMasking(input, userid) {
+        const setEmail = input.checked === true;
+        load();
+        const res = await fetch(`/api/admin/emailMasking/${userid}/${setEmail}`,{
+            method: 'PATCH',
+            headers:{
+                'CSRFToken' : await getCSRFToken(),
+            }
+        });
+        unload();
+        loadError(res);
+    }
+
     async function viewUser(userID) {
 
         const prefix = 'modaldata-user-details-';
-        const ids = ['username','userID','created_at','authenticationMethods', 'email'];
+        const ids = ['username','userID','created_at','authenticationMethods', 'email', 'userType'];
         const buttonList = document.getElementById(prefix+'button-list');
 
         buttonList.textContent = '';
         openModal('user-details', ()=>{
             ids.forEach((value)=>{
-                document.getElementById(prefix+value).value = '';
+                document.getElementById(prefix+value).value = '_';
             });
             document.getElementById(prefix+'sessionList').textContent = '';
             buttonList.childNodes.forEach((e)=>e.remove());
@@ -202,6 +221,12 @@
         ids.forEach((value)=>{
             document.getElementById(prefix+value).value = user[value];
         });
+
+        const emailMaskingCheckmark = document.getElementById(prefix+'emailMasking');
+        emailMaskingCheckmark.addEventListener('click', (event)=>{
+            toggleEmailMasking(emailMaskingCheckmark, user.userID);
+        });
+        emailMaskingCheckmark.checked = user.userType.split('-').includes('emailMasking');
 
         document.getElementById(prefix+'session-length').value = user.sessions.length;
 
@@ -357,7 +382,7 @@
 	}
     function addCopyToClipboard(){
 		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
-		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"]):not([type="checkbox"])').forEach((node)=>{
 			let id = node.id;
 			if(!id){
 				id=makeid(20);

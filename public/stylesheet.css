@@ -31,6 +31,9 @@ input {
 input:disabled {
 	cursor: not-allowed;
 }
+input[type="checkbox"]{
+	min-width: 0;
+}
 .nav-bar-button {
 	width: 2rem;
 	aspect-ratio: 1/1;

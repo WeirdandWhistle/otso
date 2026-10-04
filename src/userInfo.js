@@ -130,8 +130,10 @@ async function privateInfo(request, env) {
 	out.loginMethods = user.authenticationMethods.split(' ');
 	out.authorizedApps = [];
 	out.isAdmin = session.isAdmin(user.userType);
-	// console.log('userinfo',user);
-	out.emailVerified = user.emailVerified ? true : false;
+	console.log('email verifyed',user.emailVerified);
+	if(user.emailVerified === 1) out.emailVerified = true;
+	else if(user.emailVerified === 0) out.emailVerified = false;
+	else out.emailVerified = null;
 
 	const apps = parseScopes(user.authorizedApps);
 	apps.forEach(async (value, key) => {

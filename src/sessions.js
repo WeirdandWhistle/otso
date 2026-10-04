@@ -154,6 +154,7 @@ export async function getScopesFromAccessToken(request, env) {
 	return tokens;
 }
 export function isAdmin(userType){
-	if(userType == 'admin' || userType == 'owner') return true;
+	const arr = userType.split('-')
+	if(arr.includes('admin') || arr.includes('owner')) return true;
 	return false;
 }
