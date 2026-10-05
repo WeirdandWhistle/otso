@@ -10,7 +10,7 @@ export async function updateDBWithVerifiedEmail(env, userID, email) {
 }
 export async function isEmailVerified(USERID, TOKEN, email) {
 	const json = await getEmailsJson(USERID, TOKEN, email);
-	console.log('json', json);
+	// console.log('json', json);
 	for (const obj of json) {
 		if (obj.email == email && obj.verified) return true;
 	}
@@ -40,5 +40,11 @@ export async function verifyAddress(USERID, TOKEN, email) {
             email: email,
         }),
 	});
-    if (!res.ok) throw new Error('CLOUDFLARE email api ERROR: ' + (await res.text()));    
+    if (!res.ok) throw new Error('CLOUDFLARE email api ERROR: ' + (await res.text())); 
+}
+
+
+export function maskEmail(url, mask_email, email, userID) {
+	if(!mask_email) return email;
+	return `userid+${userID}@${new URL(url).hostname}`;
 }

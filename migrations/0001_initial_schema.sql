@@ -1,20 +1,4 @@
-export async function init(env) {
-	await env.OTSO_DB.prepare(databaseInitString).bind().run();
-}
-export async function remove(env) {
-	await env.OTSO_DB.prepare(databaseDeleteString).bind().run();
-}
-const databaseDeleteString = `
-DROP TABLE IF EXISTS Sessions;
-DROP TABLE IF EXISTS OAuthTokens;
-DROP TABLE IF EXISTS OAuthIssuers;
-DROP TABLE IF EXISTS OAuthClients;
-DROP TABLE IF EXISTS Users;
-DROP TABLE IF EXISTS OIDCKeys;
-DROP TABLE IF EXISTS KV;
-`;
-
-const databaseInitString = `
+-- Migration number: 0001 	 2026-10-05T00:41:24.655Z
 CREATE TABLE IF NOT EXISTS Users (
     userID TEXT NOT NULL PRIMARY KEY,
     authenticationMethods TEXT DEFAULT '',
@@ -80,4 +64,3 @@ CREATE TABLE IF NOT EXISTS KV (
     v TEXT,
     ttl BIGINT
 );
-`;

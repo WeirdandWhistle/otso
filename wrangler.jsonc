@@ -8,12 +8,10 @@
 	"main": "src/index.js",
 	"compatibility_date": "2026-07-04",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"upload_source_maps": true,
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -38,23 +36,31 @@
 	 */
 	"assets": {
 		"directory": "./public/",
-		"binding": "ASSETS"
+		"binding": "ASSETS",
 	},
 	"d1_databases": [
 		{
 			"binding": "OTSO_DB",
 			"database_name": "otso_db",
-			"database_id": "fd9c72c9-7e96-4c0d-900f-0fb1c2951c56"
-		}
+			"database_id": "fd9c72c9-7e96-4c0d-900f-0fb1c2951c56",
+		},
 	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "SIGNIN_LINK_WEBSOCKET",
-				"class_name": "WebSocketDurableObject"
-			}
-		]
-	}
+				"class_name": "WebSocketDurableObject",
+			},
+		],
+	},
+
+	"exports": {
+		"WebSocketDurableObject": {
+			"type": "durable-object",
+			"storage": "sqlite",
+		},
+	},
+
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

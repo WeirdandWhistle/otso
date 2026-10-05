@@ -7,8 +7,8 @@ let allKeyPairs = null;
 
 export async function endpoint(request, env, KV) {
 	const pathname = new URL(request.url).pathname;
+	const origin = new URL(request.url).origin.replace('http://', 'https://');
 	if (pathname.startsWith('/.well-known/openid-configuration')) {
-		const origin = new URL(request.url).origin;
 		const out = {
 			issuer: origin,
 			authorization_endpoint: `${origin}/api/oauth2/authorize`,
@@ -36,6 +36,24 @@ export async function endpoint(request, env, KV) {
 			out.keys.push(temp);
 		}
 
+		return new Response(JSON.stringify(out), {
+			headers: {
+				'Content-Type': 'application/json',
+				'Access-Control-Allow-Origin': '*',
+				'Cache-Control': `public,max-age=${60 * 60 * 1}`,
+			},
+		});
+	} else if (pathname.startsWith('/.well-known/webfinger')) {
+		const out = {
+			subject: `acct:admin@otso.whynotjava.net`,
+			links: [
+				{
+					rel: 'http://openid.net/specs/connect/1.0/issuer',
+					href: origin,
+				},
+			],
+		};
+		// console.log(out);
 		return new Response(JSON.stringify(out), {
 			headers: {
 				'Content-Type': 'application/json',

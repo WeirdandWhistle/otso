@@ -33,7 +33,7 @@ export function generatePayload(issuer, userID, audience, experationTime, notBef
 		nonce: nonce ? nonce : generateRandomString(16),
 	};
 	for (const key in claims) {
-		// console.log("claim",key,"value",claims[key]);
+		console.log("claim",key,"value",claims[key]);
 		payload[key] = claims[key];
 	}
 	// console.log("payload",payload);

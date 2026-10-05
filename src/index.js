@@ -5,7 +5,7 @@ import * as APIHandler from './APIHandler.js';
 import * as databaseInitializer from './databaseInitialization.js';
 import { WebSocketDurableObject } from './signinLinks.js';
 export { WebSocketDurableObject };
-let databaseInitialized = false;
+let databaseInitialized = true;
 let deleteDatabaseOnStart = false;
 
 export default {

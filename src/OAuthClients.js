@@ -48,7 +48,7 @@ export async function client(request, env, KV) {
 		const client_secret = generateClientSecret();
 		const client_secret_hash = await base64SHA256(client_secret);
 
-		await db.createOAuthClient(env, client_id, client_secret_hash, json.redirect_uri, json.client_type, json.name, user.userID);
+		await db.createOAuthClient(env, client_id, client_secret_hash, json.redirect_uri, json.client_type, json.name, user.userID, json.mask_email);
 		return new Response(
 			JSON.stringify({
 				client_secret: client_secret,

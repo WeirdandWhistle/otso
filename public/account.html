@@ -24,6 +24,7 @@
 		<a href="#authorized-apps">Authorized Apps</a>
 		<a href="#sessions">Sessions</a>
 		<a href="#signin-links">Sign-in Links</a>
+		<a href="#oidc-use">OIDC Ussage</a>
 		<a href="#clients">My OAuth Clients</a>
 		<a href="#danger-zone">Danger Zone</a>
 
@@ -84,6 +85,16 @@
             </div>
 		</div>
 		<div>
+			<a href="#oidc-use" id="oidc-use">OIDC Ussage</a><br>
+			<span>You can use OTSO in place of any generic OAuth 2.0/OIDC provider. The designed use for this is to use Otso as an authenticaion provider for <a href="https://tailscale.com">Tailscale</a>.</span><br>
+			<span>But why would you ever do this?</span><br>
+			<span>Simple. Becuase you dont want to give away your email address. Otso currently supports <b>1</b> different options for masking your email address.</span><br>
+			<span>Simply log in as if any of theses were your email:</span>
+			<div id="odic-email-list">
+				<input id="odic-email-userid">
+			</div>
+		</div>
+		<div>
 			<a id="clients" href="#clients">OAuth Clients</a><br>
 			These are your OAuth Client details:<br>
 			<div id="owned-clients" style="display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 0.25rem;">
@@ -117,9 +128,11 @@
 							<input type="radio" name="clientTypeModal" style="min-width: auto;" id="create-type-confidential"> <label>Confidential</label>
 							<input type="radio" name="clientTypeModal" style="min-width: auto;" id="create-type-public"> <label>Public</label>
 						</div><br>
+						<pre>Mask Email   :</pre> <input id="create-mask_email" type="checkbox">
+
 						<div style="display: none;" id="create-final">
-						<pre>Client ID    :</pre><input id="create-client_id"><br>
-						<pre>Client Secret:</pre><input id="create-client_secret"><br>
+							<pre>Client ID    :</pre><input id="create-client_id"><br>
+							<pre>Client Secret:</pre><input id="create-client_secret"><br>
 						</div>
 						<span style="display: none; justify-content: center; align-items: center; width: 100%; border: 1px red solid;" id="create-error">Error</span><br>
 						<div style="width: 100%; display: flex; justify-content: center; align-items: center;"><button onclick="createClient()" style="font-size: 1.25rem;">Create</button></div>
@@ -362,6 +375,8 @@
 		document.getElementById("userID").value = userInfo.userID;
 		document.getElementById("createdAt").value = dataTimeString(new Date(userInfo.created_at));
 
+		document.getElementById('odic-email-userid').value = `userid+${userInfo.userID}@otso.whynotjava.net`;
+
 		if(userInfo.emailVerified != null){
 			document.getElementById('email-verify-container').style.display = 'inline';
 			document.getElementById("emailVerified").value = String(userInfo.emailVerified);
@@ -553,6 +568,7 @@
 		const redirect_uri = document.getElementById("create-redirect_uri").value;
 		const typePublic = document.getElementById("create-type-public").checked;
 		const typeConfidential = document.getElementById("create-type-confidential").checked;
+		const maskEmail = document.getElementById("create-mask_email").checked == true;
 		const err = document.getElementById("create-error");
 		const createFinal = document.getElementById("create-final");
 		const client_id = document.getElementById("create-client_id");
@@ -590,6 +606,7 @@
 				name: name,
 				client_type: type,
 				redirect_uri: redirect_uri,
+				mask_email: maskEmail,
 			}),
 		});
 		if(!res.ok){
@@ -642,7 +659,7 @@
 	}
 	function addCopyToClipboard(){
 		const imgSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>`;
-		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"])').forEach((node)=>{
+		document.querySelectorAll('input:not([type="radio"]):not([type="2fa"]):not([type="checkbox"])').forEach((node)=>{
 			let id = node.id;
 			if(!id){
 				id=makeid(20);

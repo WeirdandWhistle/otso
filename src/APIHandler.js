@@ -30,7 +30,7 @@ export async function handle(request, env, ctx) {
 		if (pathname.startsWith('/api/account/createAccount')) {
 			return await userControl.createAccount(request, env, KV, ctx);
 		} else if (pathname.startsWith('/api/account/info')) {
-			return await userInfo.info(request, env, KV);
+			return await userInfo.info(request, env, KV, ctx);
 		} else if (pathname.startsWith('/api/admin/info')) {
 			return await userInfo.adminInfo(request, env, KV);
 		} else if (pathname.startsWith('/api/admin/userLookup')) {

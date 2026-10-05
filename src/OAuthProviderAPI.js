@@ -12,6 +12,7 @@ import {
 	safeCompareString,
 } from './randomData.js';
 import { parseScopes, stringifyScopes } from './parseScopes.js';
+import { maskEmail } from './email.js';
 
 // OAuth 2.0 endpoints
 export async function authorize(request, env, KV, OIDC_KEY_PAIR) {
@@ -169,7 +170,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR) {
 			pkce: {
 				nonce: query.get('nonce'),
 			},
-		});
+		}, Math.floor(Date.now()/1000) * 60 * 1);
 
 		const redirectTo = new URL(redirect_uri);
 		redirectTo.searchParams.set('code', code);
@@ -209,7 +210,7 @@ export async function authorize(request, env, KV, OIDC_KEY_PAIR) {
 			claims.name = user.username;
 			claims.preferred_username = user.username;
 		}
-		if (scopes.includes('email')) claims.email = user.email;
+		if (scopes.includes('email')) claims.email = maskEmail(request.url, OAuthClient.mask_email, user.email, user.userID);
 		// console.log("claims",claims);
 		const payload = jwt.generatePayload(
 			new URL(request.url).origin,
@@ -276,14 +277,14 @@ export async function token(request, env, KV, OIDC_KEY_PAIR) {
 	let client_secret;
 
 	if (request.headers.get('Authorization')) {
-		const authArray = request.header.get('Authorization').split(' ');
+		const authArray = request.headers.get('Authorization').split(' ');
 		const tokenType = authArray[0];
 		if (tokenType.toLowerCase() != 'basic')
 			return new Response(
 				`{"error":"invalid_client","error_description":"When using HTTP Authorization you MUST use the 'Basic' token type. (eg, 'Basic 123xyz')) as defined Here: https://datatracker.ietf.org/doc/html/rfc2617#section-2"}`,
 				{ status: 401 },
 			);
-		const decodedBase64Array = window.atob(authArray[1]).split(':');
+		const decodedBase64Array = atob(authArray[1]).split(':');
 		client_id = decodedBase64Array[0];
 		client_secret = decodedBase64Array[1];
 	} else {
@@ -315,8 +316,12 @@ export async function token(request, env, KV, OIDC_KEY_PAIR) {
 		return new Response(`{"error":"invalid_client","error_description":"client_secret is incorrect"}`, { status: 401 });
 	}
 
-	const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, stateJson.scopes, 3600, true);
+	let scopes = stateJson.scopes;
+	if(stateJson.client.mask_email) scopes.push('maskEmail');
+
+	const tokens = await issueAccessToken(env, stateJson.user.userID, client_id, scopes, 3600, true);
 	if (stateJson.scopes.includes('openid')) {
+		console.log('state json:',stateJson);
 		const scopes = stateJson.scopes;
 		const user = stateJson.user;
 
@@ -328,7 +333,7 @@ export async function token(request, env, KV, OIDC_KEY_PAIR) {
 			claims.name = user.username;
 			claims.preferred_username = user.username;
 		}
-		if (scopes.includes('email')) claims.email = user.email;
+		if (scopes.includes('email')) claims.email = maskEmail(request.url, stateJson.client.mask_email, user.email, user.userID);
 		const payload = jwt.generatePayload(
 			new URL(request.url).origin,
 			user.userID,

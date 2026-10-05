@@ -10,6 +10,7 @@ import {
 import { parseScopes, stringifyScopes } from './parseScopes.js';
 import * as db from './databaseInteraction.js';
 import * as session from './sessions.js';
+import { maskEmail, updateDBWithVerifiedEmail } from './email.js';
 
 
 export async function adminInfo(request, env, KV) {
@@ -78,7 +79,7 @@ export async function adminUserLookup(request, env, KV) {
 	return new Response(JSON.stringify(out));
 }
 
-export async function info(request, env, KV) {
+export async function info(request, env, KV, ctx) {
 	if (request.method == 'OPTIONS') {
 		return new Response('', {
 			headers: {
@@ -94,7 +95,7 @@ export async function info(request, env, KV) {
 	const authType = authHeader.split(' ')[0].toLowerCase();
 	if (authType == 'session') {
 		if ((await session.useCSRFToken(request, env, KV)) != true) return new Response('401 Unauthorized. Wrong CSRFToken.', { status: 401 });
-		return await privateInfo(request, env);
+		return await privateInfo(request, env, ctx);
 	} else if (authType == 'bearer') {
 		return await publicInfo(request, env);
 	} else {
@@ -110,7 +111,10 @@ async function publicInfo(request, env) {
 	const out = {};
 	if (scopes.has('sub')) out.userID = user.userID;
 	if (scopes.has('preferred_username')) out.username = user.username;
-	if (scopes.has('email')) out.email = user.email;
+	if (scopes.has('email')) {
+		if(scopes.has('maskEmail')) out.email = maskEmail(request.url, true, user.email, user.userID);
+		else out.email = user.email;
+	}
 
 	return new Response(JSON.stringify(out), {
 		headers: {
@@ -118,7 +122,7 @@ async function publicInfo(request, env) {
 		},
 	});
 }
-async function privateInfo(request, env) {
+async function privateInfo(request, env, ctx) {
 	const user = await session.getUserIfSession(request, env);
 	if (!user) return new Response(`401 Unauthorized. Session is invalid.`, { status: 401 });
 
@@ -130,10 +134,12 @@ async function privateInfo(request, env) {
 	out.loginMethods = user.authenticationMethods.split(' ');
 	out.authorizedApps = [];
 	out.isAdmin = session.isAdmin(user.userType);
-	console.log('email verifyed',user.emailVerified);
+	// console.log('email verifyed',user.emailVerified);
 	if(user.emailVerified === 1) out.emailVerified = true;
 	else if(user.emailVerified === 0) out.emailVerified = false;
 	else out.emailVerified = null;
+
+	if(user.emailVerified === 0) ctx.waitUntil(updateDBWithVerifiedEmail(env, user.userID, user.email));
 
 	const apps = parseScopes(user.authorizedApps);
 	apps.forEach(async (value, key) => {

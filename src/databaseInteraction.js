@@ -219,13 +219,13 @@ export async function getOAuthClientFromName(env, name){
 		.run()
 	);
 }
-export async function createOAuthClient(env, client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID) {
+export async function createOAuthClient(env, client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID, mask_email) {
 	await env.OTSO_DB
 		.prepare(`
-			INSERT INTO OAuthClients (client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID)
-			VALUES (?, ?, ?, ?, ?, ?);
+			INSERT INTO OAuthClients (client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID, mask_email)
+			VALUES (?, ?, ?, ?, ?, ?, ?);
 			`)
-		.bind(client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID)
+		.bind(client_id, client_secret_hash, redirection_URIs, client_type, name, ownerUserID, mask_email == true)
 		.run();
 }
 export async function updateOAuthClient(env, client_id, redirection_URIs, client_type, name){
