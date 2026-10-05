@@ -127,23 +127,28 @@
     </div>
 
     <script>
-        const query = new URL(window.location).searchParams;
-				const addTo = query.toString();
-        if(addTo){
-            for(let array = document.querySelectorAll("a"), i = 0; i<array.length; i++){
-                console.log(array[i]);
-                const linkTo = array[i].attributes.href.nodeValue;
-                if(!linkTo.startsWith("/oauth/")){
-                    continue;
+        try {
+            const query = new URL(window.location).searchParams;
+		    const addTo = query.toString();
+            if(addTo){
+                for(let array = document.querySelectorAll("a"), i = 0; i<array.length; i++){
+                    console.log(array[i]);
+                    const linkTo = array[i].attributes.href.nodeValue;
+                    if(!linkTo.startsWith("/oauth/")){
+                        continue;
+                    }
+                    array[i].attributes.href.nodeValue +='?' + addTo;
                 }
-                array[i].attributes.href.nodeValue +='?' + addTo;
             }
+		    if(query.get('message')){
+		    	const temp = document.getElementById('message');
+		    	temp.innerText = query.get('message');
+		    	temp.style.display = 'flex';
+		    }
+        } catch (error) {
+            
         }
-				if(query.get('message')){
-					const temp = document.getElementById('message');
-					temp.innerText = query.get('message');
-					temp.style.display = 'flex';
-				}
+        
         const sleep = (ms) => new Promise((res)=>setTimeout(res, ms));
         async function qrcodeLogin() {
             const prefix = new URL(window.location).protocol === 'http:' ? 'ws:' : 'wss:';
@@ -169,12 +174,15 @@
                         alert("requested denied!");
                         break;
                     case 'approved':
-                        const res = await fetch("/api/links/getsession/"+data.token,{
+                        let query = new URL(window.location).searchParams.get("state");
+                        if(!query) query = '';
+                        else query = '?state=' + query;
+                        const res = await fetch("/api/links/getsession/"+data.token+query,{
                             headers:{
                                 'CSRFTokenNL': await getCSRFTokenNL(),
                             }
                         });
-                        doError(res);
+                        await doError(res);
                         const json = await res.json();
                         let redirect_to = new URL(window.location).searchParams.get("redirect_from");
                         if(redirect_to) window.location = redirect_to;
@@ -198,7 +206,10 @@
                 type: 'getSigninLink',
             }));
 
-            openModal('qrcode',()=>{});
+            openModal('qrcode',()=>{
+                document.getElementById('modaldata-qrcode').innerHTML = ' ';
+                document.getElementById('modaldata-qrcode-url').value = '_';
+            });
 
             // heartbeat loop
             // let num = 0;
@@ -255,6 +266,15 @@
 		setTimeout(()=>target.innerHTML = temp, 500);
 	}
     addCopyToClipboard();
+
+    const doError = async (res) => {
+		if(!res.ok){
+				document.open();
+				document.write(await res.text());
+				document.close();
+                throw new Error("block all future code.")
+			}		
+	}
 
     </script>
 </body>
