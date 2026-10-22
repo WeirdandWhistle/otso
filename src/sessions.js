@@ -24,7 +24,9 @@ export async function issueSession(env, userID, headers) {
 	return sessionID;
 }
 export function getCookie(sessionID) {
-	return `session=${sessionID}; HttpOnly; Path=/; SameSite=Lax`;
+	const expiresDate = new Date();
+	expiresDate.setUTCMilliseconds(Date.now() + 1000 * 60 * 60 * 24 * 90); // 90 days from now
+	return `session=${sessionID}; HttpOnly; Path=/; SameSite=Lax; Expires=${expiresDate.toString()}`;
 }
 export function getSessionID(request) {
 	const cookiesArray = request.headers.get('Cookie') ? request.headers.get('Cookie').split(';') : null;
